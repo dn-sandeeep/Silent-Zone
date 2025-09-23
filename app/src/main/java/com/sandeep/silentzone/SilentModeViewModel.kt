@@ -10,6 +10,11 @@ import kotlinx.coroutines.launch
 class SilentModeViewModel(
     private val repo: SilentModeRepository
 ) : ViewModel() {
+    private val _availableSsidList = MutableStateFlow<List<String>>(emptyList())
+    val availableSsidList: StateFlow<List<String>> = _availableSsidList.asStateFlow()
+    fun updateSsidList(ssids: List<String>) {
+        _availableSsidList.value = ssids
+    }
     private val uiState = MutableStateFlow(
         UiState(
             accessGranted = repo.hasPolicyAccess(),

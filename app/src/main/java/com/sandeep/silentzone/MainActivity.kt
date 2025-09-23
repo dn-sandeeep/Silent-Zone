@@ -1,7 +1,19 @@
 package com.sandeep.silentzone
 
+import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
+import android.net.Uri
+import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
@@ -9,44 +21,31 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-
 import com.sandeep.silentzone.ui.theme.SilentZoneTheme
-
-import android.Manifest
-import android.content.Context
-import android.content.SharedPreferences
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
-import android.net.Uri
-import android.net.wifi.ScanResult
-import android.net.wifi.WifiManager
-import android.os.Build
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
     private val vm: SilentModeViewModel by viewModels { SilentModeViewModelFactory(this) }
@@ -59,6 +58,38 @@ class MainActivity : ComponentActivity() {
         private const val REQUEST_CODE_WIFI_PERMISSION: Int = 1001
         private const val PREFS_NAME = "silent_prefs"
         private const val PREF_KEY_SELECTED_SSID = "pref_selected_ssid"
+        private const val PREF_KEY_AUTO_DETECTION = "pref_auto_detection"
+    }
+
+    private val wifiScanReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            val success = intent?.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false) ?: false
+            if (success) {
+                val wifiManager = context?.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+                if (wifiManager != null) {
+                    try {
+                        val scanResults = wifiManager.scanResults
+                        val ssidList =
+                            scanResults.map { it.SSID }.filter { it.isNotBlank() }.distinct()
+                        vm.updateSsidList(ssidList)
+                        if (ssidList.isEmpty()) {
+                            Toast.makeText(
+                                context,
+                                "No WiFi networks found", Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "permission denied", Toast.LENGTH_SHORT).show()
+                    }
+                } else {
+                    Toast.makeText(context, "No WiFi networks not available", Toast.LENGTH_SHORT)
+                        .show()
+                }
+
+            } else {
+                Toast.makeText(context, "No WiFi networks found", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,26 +101,34 @@ class MainActivity : ComponentActivity() {
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
+        val intentFilter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
+        registerReceiver(wifiScanReceiver, intentFilter)
+
         setContent {
             SilentZoneTheme {
                 MaterialTheme {
                     Surface(Modifier.fillMaxSize()) {
                         val state = vm.uiStateFlow.collectAsStateWithLifecycle().value
+                        val availableSsidList =
+                            vm.availableSsidList.collectAsStateWithLifecycle().value
                         SilentScreen(
                             accessGranted = state.accessGranted,
                             mode = state.currentMode,
                             message = state.message,
                             onGrantAccess = {
-                                //startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-                                val intent =
-                                    Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-                                startActivity(intent)
+                                startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
                             },
                             setSilent = vm::setSilent,
                             setNormal = vm::setNormal,
-                            addZone = {
-                                handleSetSilentWiFiclick()
-                            })
+                            addZone = { startWifiScan() },
+                            autoDectionEnabled = isAutoDetectionEnabled(),
+                            onToggleAutoDetection = { toggleAutoDetection(it) }
+                            ,
+                            availableSsidList = availableSsidList,
+                            onSelectedSsid = { ssid -> saveSelectedSsid(ssid) }
+
+
+                        )
 
                     }
                 }
@@ -98,6 +137,25 @@ class MainActivity : ComponentActivity() {
         checkWiFiPermissionAndResister()
     }
 
+    private fun startWifiScan() {
+        if (!wifiPermissionGranted()) {
+            requestWifiPermission()
+            return
+        }
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER) &&
+            !locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        ) {
+            Toast.makeText(this, "Please enable location services", Toast.LENGTH_SHORT).show()
+            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+            startActivity(intent)
+            return
+
+        }
+        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        wifiManager.startScan()
+
+    }
 
     private fun openAppPermissionSettings() {
         val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
@@ -112,6 +170,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterReceiver(wifiScanReceiver)
         networkCallback?.let {
             try {
                 connectivityManager.unregisterNetworkCallback(it)
@@ -180,6 +239,7 @@ class MainActivity : ComponentActivity() {
         }
         registerWiFiNetworkCallback()
     }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,
@@ -202,6 +262,7 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
     private fun registerWiFiNetworkCallback() {
         val request = NetworkRequest.Builder()
             .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
@@ -210,13 +271,16 @@ class MainActivity : ComponentActivity() {
         networkCallback = object : ConnectivityManager.NetworkCallback() {
             override fun onAvailable(network: android.net.Network) {
                 super.onAvailable(network)
+
                 val ssid = getCurrentSsid()
                 val saved = getSelectedSsid()
-                if (!ssid.isNullOrBlank() && ssid == saved) {
+
+                if (!ssid.isNullOrBlank() && saved.contains(ssid)) {
                     runOnUiThread { vm.setSilent() }
                 } else {
                     runOnUiThread { vm.setNormal() }
                 }
+
             }
 
             override fun onLost(network: android.net.Network) {
@@ -250,32 +314,65 @@ class MainActivity : ComponentActivity() {
             Toast.makeText(this, "No SSID found", Toast.LENGTH_SHORT).show()
             return
         }
-        prefs.edit().putString(PREF_KEY_SELECTED_SSID, ssid).apply()
+        val set = prefs.getStringSet(PREF_KEY_SELECTED_SSID, mutableSetOf())!!.toMutableSet()
+
+        set.add(ssid)
+
+        prefs.edit().putStringSet(PREF_KEY_SELECTED_SSID, set).apply()
         val current = getCurrentSsid()
-        if (current == ssid) {
+        if (set.contains(current)) {
             vm.setSilent()
         } else {
             vm.setNormal()
         }
     }
 
-    private fun getSelectedSsid(): String? =
-        prefs.getString(PREF_KEY_SELECTED_SSID, null)
+    private fun getSelectedSsid(): Set<String> =
+        prefs.getStringSet(PREF_KEY_SELECTED_SSID, emptySet()) ?: emptySet()
 
-    private fun handleSetSilentWiFiclick() {
+    private fun isAutoDetectionEnabled(): Boolean =
+        prefs.getBoolean(PREF_KEY_AUTO_DETECTION, true)
+
+    fun toggleAutoDetection(enabled: Boolean) {
+        prefs.edit().putBoolean(PREF_KEY_AUTO_DETECTION, enabled).apply()
+    }
+
+    private fun handleSetSilentWiFiClick(context: Context, onSsidSelected: (String) -> Unit) {
         if (!wifiPermissionGranted()) {
             requestWifiPermission()
             return
         }
+        val locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        if (!locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+            &&
+            !locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)
+        ) {
+            Toast.makeText(this, "Please enable location services", Toast.LENGTH_SHORT).show()
+            val intent = Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+            startActivity(intent)
+            return
+        }
+
+
         val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-        wifiManager.startScan()
+        //wifiManager.startScan()
         val scanResult = wifiManager.scanResults
         val ssidList = scanResult.map { it.SSID }.filter { it.isNotBlank() }
 
-        if (ssidList.isEmpty()){
-            Toast.makeText(this, "No WiFi networks found", Toast.LENGTH_SHORT).show()
+        if (ssidList.isEmpty()) {
+            Toast.makeText(
+                this,
+                "No WiFi networks found", Toast.LENGTH_SHORT
+            ).show()
             return
         }
+        androidx.appcompat.app.AlertDialog.Builder(context)
+            .setTitle("Select WiFi network")
+            .setItems(ssidList.toTypedArray()) { _, which ->
+                val selectedSsid = ssidList[which]
+                this@MainActivity.saveSelectedSsid(selectedSsid)
+            }
+            .show()
     }
 }
 
@@ -287,9 +384,14 @@ fun SilentScreen(
     onGrantAccess: () -> Unit,
     setSilent: () -> Unit,
     setNormal: () -> Unit,
-    addZone: () -> Unit
+    addZone: () -> Unit,
+    availableSsidList: List<String>,
+    onSelectedSsid: (String) -> Unit,
+    autoDectionEnabled: Boolean,
+    onToggleAutoDetection: (Boolean) -> Unit
 
 ) {
+    val context = LocalContext.current
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -304,6 +406,7 @@ fun SilentScreen(
                 if (accessGranted) "DND Access: Granted" else "DND Access: Not Granted"
             )
         }, onClick = {})
+
         AssistChip(label = { Text("Current Mode: $mode") }, onClick = {})
 
         if (!accessGranted) {
@@ -320,15 +423,74 @@ fun SilentScreen(
             }
         }
         if (accessGranted) {
-            Button(onClick = {
-                addZone()
-            }) {
+            Button(
+                onClick =
+                    addZone
+            )
+            {
                 Text("Set silent WiFi")
             }
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Auto Detection")
+            androidx.compose.material3.Switch(
+                checked = autoDectionEnabled,
+                onCheckedChange = { onToggleAutoDetection(it) }
+            )
         }
         if (!message.isNullOrBlank()) {
             Text(message, style = MaterialTheme.typography.bodyMedium)
         }
+        if (availableSsidList.isNotEmpty()) {
+            SsidSelectionDialog(
+                ssids = availableSsidList,
+                onSsidSelected = {
+                    onSelectedSsid(it)
+                },
+                onDismiss = { "pending" }
+            )
+        }
     }
+}
+
+@Composable
+fun SsidSelectionDialog(
+    ssids: List<String>,
+    onSsidSelected: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select WiFi network") },
+        text = {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(ssids) { ssid ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onSsidSelected(ssid) },
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+
+                    ) {
+                        Text(ssid)
+                    }
+                }
+
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+
+    )
 }
 
