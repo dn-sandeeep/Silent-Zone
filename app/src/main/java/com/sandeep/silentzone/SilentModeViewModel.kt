@@ -27,11 +27,6 @@ class SilentModeViewModel(
             accessGranted = repo.hasPolicyAccess(),
             currentMode = repo.getCurrentMode()
         )
-//        viewModelScope.launch {
-//            val granted = repo.hasPolicyAccess()
-//            val mode = repo.getCurrentMode()
-//            uiState.value = uiState.value.copy(accessGranted = granted, currentMode = mode, message = null)
-//        }
     }
     fun setSilent() {
         viewModelScope.launch {
