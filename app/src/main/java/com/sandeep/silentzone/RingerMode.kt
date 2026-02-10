@@ -1,6 +1,6 @@
 package com.sandeep.silentzone
 
-enum class RingerMode { SILENT, NORMAL }
+enum class RingerMode { SILENT, NORMAL, VIBRATE }
 
 
 data class UiState(
