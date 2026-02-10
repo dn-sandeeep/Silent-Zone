@@ -4,7 +4,6 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.SharedPreferences
 import android.media.AudioManager
-import com.sandeep.silentzone.SilentZoneGeofenceManager // Assuming in same package
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 

@@ -143,7 +143,6 @@ class SilentModeViewModel(
             radius = 100f,
             mode = mode
         )
-        Log.d("LocationDebug", "Adding Location Zone in ViewModel: ${zone.id}, Lat: $latitude, Lon: $longitude")
         repo.addLocationZone(zone)
         refreshLocationZones()
     }
