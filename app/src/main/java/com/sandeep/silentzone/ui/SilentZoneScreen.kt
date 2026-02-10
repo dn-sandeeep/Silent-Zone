@@ -1,6 +1,5 @@
 package com.sandeep.silentzone.ui
 
-import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,12 +22,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoNotDisturbOn
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.LocationOn
-import com.sandeep.silentzone.LocationZone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,14 +50,13 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.platform.LocalContext
+import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
 
 @Composable
@@ -125,7 +121,7 @@ fun SilentScreen(
     onAddLocationZone: (RingerMode) -> Unit,
     onDeleteLocationZone: (String) -> Unit
 ) {
-var selectedTab by remember { mutableStateOf(0) } // 0 = Silent, 1 = Vibrate
+    var selectedTab by remember { mutableStateOf(0) } // 0 = Silent, 1 = Vibrate
     //var pendingSsid by remember { mutableStateOf<String?>(null) } // Temp storage for selected SSID
     var pendingSsid by remember { mutableStateOf<String?>(null) } // Temp storage for selected SSID
     var showManualInput by remember { mutableStateOf(false) } // Manual input dialog
@@ -184,7 +180,7 @@ var selectedTab by remember { mutableStateOf(0) } // 0 = Silent, 1 = Vibrate
                                 Icons.Default.Vibration,
                                 contentDescription = null
                             )
-                        } 
+                        }
                     )
                 }
 
@@ -211,13 +207,15 @@ var selectedTab by remember { mutableStateOf(0) } // 0 = Silent, 1 = Vibrate
                             )
                         }
                         items(currentLocationList) { zone ->
-                            LocationZoneItemCard(zone = zone, onDelete = { onDeleteLocationZone(zone.id) })
+                            LocationZoneItemCard(
+                                zone = zone,
+                                onDelete = { onDeleteLocationZone(zone.id) })
                         }
                     }
 
                     // WiFi Zones Section
                     if (currentWifiList.isNotEmpty()) {
-                         item {
+                        item {
                             Text(
                                 "WiFi Zones",
                                 style = MaterialTheme.typography.labelMedium,
@@ -256,27 +254,30 @@ var selectedTab by remember { mutableStateOf(0) } // 0 = Silent, 1 = Vibrate
                         onToggle = onToggleAutoDetection
                     )
 
-Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = { showAddTypeDialog = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.DoNotDisturbOn, contentDescription = null) // Generic icon
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Add New Zone")
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { showAddTypeDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.DoNotDisturbOn,
+                                contentDescription = null
+                            ) // Generic icon
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Add New Zone")
+                        }
+
+                        OutlinedButton(
+                            onClick = { showManualInput = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Enter WiFi Name Manually")
+                        }
                     }
-                    
-                    OutlinedButton(
-                        onClick = { showManualInput = true },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Enter WiFi Name Manually")
-                    }
-                }
                 }
             }
         }
@@ -304,11 +305,11 @@ Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             onDismiss = { pendingSsid = null }
         )
     }
-    
+
     // Manual WiFi Input Dialog
     if (showManualInput) {
         var manualSsid by remember { mutableStateOf("") }
-        
+
         AlertDialog(
             onDismissRequest = { showManualInput = false },
             title = { Text("Enter WiFi Name") },
@@ -366,7 +367,7 @@ Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             addZone()
                             showAddTypeDialog = false
                         },
-                         modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(Icons.Default.Wifi, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
