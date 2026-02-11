@@ -26,6 +26,9 @@ import androidx.activity.viewModels
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -34,11 +37,17 @@ import com.sandeep.silentzone.ui.SilentScreen
 import com.sandeep.silentzone.ui.theme.SilentZoneTheme
 import kotlinx.coroutines.launch
 
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationServices
+import com.sandeep.silentzone.ui.MapZone
+
 class MainActivity : ComponentActivity() {
     private val vm: SilentModeViewModel by viewModels { SilentModeViewModelFactory(this) }
     private lateinit var connectivityManager: ConnectivityManager
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private lateinit var prefs: SharedPreferences
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private var currentLocation: com.google.android.gms.maps.model.LatLng? by mutableStateOf(null)
 
     companion object {
         private const val PREFS_NAME = "silent_prefs"
@@ -107,6 +116,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         enableEdgeToEdge()
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        fetchCurrentLocation()
 
         prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
@@ -236,7 +248,23 @@ class MainActivity : ComponentActivity() {
                             currentWifiSsid = currentWifiSsid,
                             locationZones = locationZones,
                             onAddLocationZone = { mode -> vm.addCurrentLocationZone(mode) },
-                            onDeleteLocationZone = { id -> vm.removeLocationZone(id) }
+                            onMapZonesSelected = { zones, mode ->
+                                zones.forEachIndexed { index, zone ->
+                                    vm.addLocationZone(
+                                        latitude = zone.latLng.latitude,
+                                        longitude = zone.latLng.longitude,
+                                        name = zone.name,
+                                        mode = mode
+                                    )
+                                }
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Added ${zones.size} zones",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            },
+                            onDeleteLocationZone = { id -> vm.removeLocationZone(id) },
+                            initialUserLocation = currentLocation
                         )
 
                     }
@@ -353,6 +381,25 @@ class MainActivity : ComponentActivity() {
                 dialog.dismiss()
             }
             .show()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun fetchCurrentLocation() {
+        if (androidx.core.content.ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED ||
+            androidx.core.content.ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+                if (location != null) {
+                    currentLocation = com.google.android.gms.maps.model.LatLng(location.latitude, location.longitude)
+                }
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")

@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoNotDisturbOn
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
@@ -59,43 +60,7 @@ import androidx.compose.ui.unit.dp
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
 
-@Composable
-fun PermissionStatusCard(
-    wifiPermissionGranted: Boolean,
-    onRequestWifiPermission: () -> Unit
-) {
-    if (!wifiPermissionGranted) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            )
-        ) {
-            Row(
-                modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.width(8.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "WiFi Permission Required",
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Text(
-                        "Grant location permission to scan WiFi networks",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-                Button(onClick = onRequestWifiPermission) {
-                    Text("Grant")
-                }
-            }
-        }
-    }
-
-}
+// PermissionStatusCard moved to SilentZoneComponents.kt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,7 +84,9 @@ fun SilentScreen(
     currentWifiSsid: String?,
     locationZones: List<LocationZone>,
     onAddLocationZone: (RingerMode) -> Unit,
-    onDeleteLocationZone: (String) -> Unit
+    onMapZonesSelected: (List<MapZone>, RingerMode) -> Unit,
+    onDeleteLocationZone: (String) -> Unit,
+    initialUserLocation: com.google.android.gms.maps.model.LatLng? // New parameter
 ) {
     var selectedTab by remember { mutableStateOf(0) } // 0 = Silent, 1 = Vibrate
     //var pendingSsid by remember { mutableStateOf<String?>(null) } // Temp storage for selected SSID
@@ -127,555 +94,285 @@ fun SilentScreen(
     var showManualInput by remember { mutableStateOf(false) } // Manual input dialog
     var showAddTypeDialog by remember { mutableStateOf(false) } // Dialog to choose between WiFi and Location
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Silent Zone", fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
-            )
-        }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Animation (Non-scrollable header)
-            SilentZoneAnimation(mode = mode)
+    var showMapSelection by remember { mutableStateOf(false) }
 
-            if (!accessGranted) {
-                PermissionWarningCard(onGrantAccess = onGrantAccess)
-            } else {
-                // Permission Status Card
-                PermissionStatusCard(
-                    wifiPermissionGranted = wifiPermissionGranted,
-                    onRequestWifiPermission = {
-                        // Will trigger permission request via MainActivity
-                    }
-                )
-                // Zone Management Tabs
-                TabRow(
-                    selectedTabIndex = selectedTab,
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    contentColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Tab(
-                        selected = selectedTab == 0,
-                        onClick = { selectedTab = 0 },
-                        text = { Text("Silent Zones") },
-                        icon = { Icon(Icons.Default.DoNotDisturbOn, contentDescription = null) }
-                    )
-                    Tab(
-                        selected = selectedTab == 1,
-                        onClick = { selectedTab = 1 },
-                        text = { Text("Vibrate Zones") },
-                        icon = {
-                            Icon(
-                                Icons.Default.Vibration,
-                                contentDescription = null
-                            )
-                        }
-                    )
-                }
+    if (showMapSelection) {
+        // Use user location or default to India Center
+        val startLocation =
+            initialUserLocation ?: com.google.android.gms.maps.model.LatLng(20.5937, 78.9629)
 
-                // Unified Zone List
+        MapSelectionScreen(
+            initialLocation = startLocation,
+            onZonesSelected = { zones ->
                 val targetMode = if (selectedTab == 0) RingerMode.SILENT else RingerMode.VIBRATE
-                val currentWifiList = if (selectedTab == 0) silentSsids else vibrateSsids
-                val currentLocationList = locationZones.filter { it.mode == targetMode }
+                onMapZonesSelected(zones, targetMode)
+                showMapSelection = false
+            },
+            onCancel = { showMapSelection = false }
+        )
+    } else {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("Silent Zone", fontWeight = FontWeight.Bold) },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                // Animation (Non-scrollable header)
+                SilentZoneAnimation(mode = mode)
 
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 80.dp) // Space for FAB/Buttons if needed
-                ) {
-                    // Location Zones Section
-                    if (currentLocationList.isNotEmpty()) {
-                        item {
-                            Text(
-                                "Location Zones",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
+                if (!accessGranted) {
+                    PermissionWarningCard(onGrantAccess = onGrantAccess)
+                } else {
+                    // Permission Status Card
+                    PermissionStatusCard(
+                        wifiPermissionGranted = wifiPermissionGranted,
+                        onRequestWifiPermission = {
+                            // Will trigger permission request via MainActivity
                         }
-                        items(currentLocationList) { zone ->
-                            LocationZoneItemCard(
-                                zone = zone,
-                                onDelete = { onDeleteLocationZone(zone.id) })
-                        }
-                    }
-
-                    // WiFi Zones Section
-                    if (currentWifiList.isNotEmpty()) {
-                        item {
-                            Text(
-                                "WiFi Zones",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
-                        items(currentWifiList.toList()) { ssid ->
-                            ZoneItemCard(ssid = ssid, onDelete = { onDeleteSsid(ssid) })
-                        }
-                    }
-
-                    // Empty State
-                    if (currentLocationList.isEmpty() && currentWifiList.isEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No zones added for this mode",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    // Zone Management Tabs
+                    TabRow(
+                        selectedTabIndex = selectedTab,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Tab(
+                            selected = selectedTab == 0,
+                            onClick = { selectedTab = 0 },
+                            text = { Text("Silent Zones") },
+                            icon = { Icon(Icons.Default.DoNotDisturbOn, contentDescription = null) }
+                        )
+                        Tab(
+                            selected = selectedTab == 1,
+                            onClick = { selectedTab = 1 },
+                            text = { Text("Vibrate Zones") },
+                            icon = {
+                                Icon(
+                                    Icons.Default.Vibration,
+                                    contentDescription = null
                                 )
+                            }
+                        )
+                    }
+
+                    // Unified Zone List
+                    val targetMode = if (selectedTab == 0) RingerMode.SILENT else RingerMode.VIBRATE
+                    val currentWifiList = if (selectedTab == 0) silentSsids else vibrateSsids
+                    val currentLocationList = locationZones.filter { it.mode == targetMode }
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 80.dp) // Space for FAB/Buttons if needed
+                    ) {
+                        // Location Zones Section
+                        if (currentLocationList.isNotEmpty()) {
+                            item {
+                                Text(
+                                    "Location Zones",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            }
+                            items(currentLocationList) { zone ->
+                                LocationZoneItemCard(
+                                    zone = zone,
+                                    onDelete = { onDeleteLocationZone(zone.id) })
+                            }
+                        }
+
+                        // WiFi Zones Section
+                        if (currentWifiList.isNotEmpty()) {
+                            item {
+                                Text(
+                                    "WiFi Zones",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            }
+                            items(currentWifiList.toList()) { ssid ->
+                                ZoneItemCard(ssid = ssid, onDelete = { onDeleteSsid(ssid) })
+                            }
+                        }
+
+                        // Empty State
+                        if (currentLocationList.isEmpty() && currentWifiList.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(200.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "No zones added for this mode",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Controls & Add Button
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        AutoDetectionCard(
+                            enabled = autoDetectionEnabled,
+                            onToggle = onToggleAutoDetection
+                        )
+
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = { showAddTypeDialog = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.DoNotDisturbOn,
+                                    contentDescription = null
+                                ) // Generic icon
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Add New Zone")
                             }
                         }
                     }
                 }
-
-                // Controls & Add Button
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    AutoDetectionCard(
-                        enabled = autoDetectionEnabled,
-                        onToggle = onToggleAutoDetection
-                    )
-
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { showAddTypeDialog = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.DoNotDisturbOn,
-                                contentDescription = null
-                            ) // Generic icon
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Add New Zone")
-                        }
-                    }
-                }
             }
         }
-    }
 
 // Dialogs
-    if (availableSsidList.isNotEmpty()) {
-        SsidSelectionDialog(
-            ssids = availableSsidList,
-            onSsidSelected = { ssid ->
-                pendingSsid = ssid // Store and show mode dialog next
-                onDismissDialog() // Dismiss list dialog
-            },
-            onDismiss = onDismissDialog
-        )
-    }
+        if (availableSsidList.isNotEmpty()) {
+            SsidSelectionDialog(
+                ssids = availableSsidList,
+                onSsidSelected = { ssid ->
+                    pendingSsid = ssid // Store and show mode dialog next
+                    onDismissDialog() // Dismiss list dialog
+                },
+                onDismiss = onDismissDialog
+            )
+        }
 
-    if (pendingSsid != null) {
-        ModeSelectionDialog(
-            ssid = pendingSsid!!,
-            onModeSelected = { mode ->
-                onSelectedSsid(pendingSsid!!, mode)
-                pendingSsid = null
-            },
-            onDismiss = { pendingSsid = null }
-        )
-    }
+        if (pendingSsid != null) {
+            ModeSelectionDialog(
+                ssid = pendingSsid!!,
+                onModeSelected = { mode ->
+                    onSelectedSsid(pendingSsid!!, mode)
+                    pendingSsid = null
+                },
+                onDismiss = { pendingSsid = null }
+            )
+        }
 
-    // Manual WiFi Input Dialog
-    if (showManualInput) {
-        var manualSsid by remember { mutableStateOf("") }
+        // Manual WiFi Input Dialog
+        if (showManualInput) {
+            var manualSsid by remember { mutableStateOf("") }
 
-        AlertDialog(
-            onDismissRequest = { showManualInput = false },
-            title = { Text("Enter WiFi Name") },
-            text = {
-                TextField(
-                    value = manualSsid,
-                    onValueChange = { manualSsid = it },
-                    label = { Text("WiFi Network Name (SSID)") },
-                    placeholder = { Text("e.g., HomeWiFi") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        if (manualSsid.isNotBlank()) {
-                            pendingSsid = manualSsid.trim()
-                            showManualInput = false
+            AlertDialog(
+                onDismissRequest = { showManualInput = false },
+                title = { Text("Enter WiFi Name") },
+                text = {
+                    TextField(
+                        value = manualSsid,
+                        onValueChange = { manualSsid = it },
+                        label = { Text("WiFi Network Name (SSID)") },
+                        placeholder = { Text("e.g., HomeWiFi") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (manualSsid.isNotBlank()) {
+                                pendingSsid = manualSsid.trim()
+                                showManualInput = false
+                            }
+                        },
+                        enabled = manualSsid.isNotBlank()
+                    ) {
+                        Text("Next")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showManualInput = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
+        if (showAddTypeDialog) {
+            val targetMode = if (selectedTab == 0) RingerMode.SILENT else RingerMode.VIBRATE
+            AlertDialog(
+                onDismissRequest = { showAddTypeDialog = false },
+                title = { Text("Select Zone Type") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                // Add current location immediately
+                                onAddLocationZone(targetMode)
+                                showAddTypeDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.LocationOn, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Current Location")
                         }
-                    },
-                    enabled = manualSsid.isNotBlank()
-                ) {
-                    Text("Next")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showManualInput = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-
-    if (showAddTypeDialog) {
-        val targetMode = if (selectedTab == 0) RingerMode.SILENT else RingerMode.VIBRATE
-        AlertDialog(
-            onDismissRequest = { showAddTypeDialog = false },
-            title = { Text("Select Zone Type") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(
-                        onClick = {
-                            onAddLocationZone(targetMode)
-                            showAddTypeDialog = false
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.LocationOn, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Current Location")
+                        OutlinedButton(
+                            onClick = {
+                                // Open Map Selection
+                                showMapSelection = true
+                                showAddTypeDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_RED.let {
+                                // Using generic map icon here
+                                androidx.compose.material.icons.Icons.Default.Map
+                            }, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Select on Map")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                addZone()
+                                showAddTypeDialog = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Wifi, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("WiFi Network")
+                        }
                     }
-                    Button(
-                        onClick = {
-                            addZone()
-                            showAddTypeDialog = false
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(Icons.Default.Wifi, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("WiFi Network")
+                },
+                confirmButton = {},
+                dismissButton = {
+                    TextButton(onClick = { showAddTypeDialog = false }) {
+                        Text("Cancel")
                     }
                 }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showAddTypeDialog = false }) {
-                    Text("Cancel")
-                }
-            }
-        )
-    }
-}
-
-// StatusCard removed as it's no longer used
-
-@Composable
-fun PermissionWarningCard(onGrantAccess: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Permission Required",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "Please grant 'Do Not Disturb' access to enable silent mode features.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onErrorContainer
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            Button(
-                onClick = onGrantAccess,
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("Grant Access", color = MaterialTheme.colorScheme.onError)
-            }
-        }
-    }
-}
-
-@Composable
-fun ManualControlCard(
-    title: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isActive: Boolean
-) {
-    Card(
-        modifier = modifier
-            .height(100.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
 }
-
-@Composable
-fun AutoDetectionCard(
-    enabled: Boolean,
-    onToggle: (Boolean) -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(
-                    text = "Auto Detection",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = "Automatically switch mode on WiFi connect",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Switch(
-                checked = enabled,
-                onCheckedChange = onToggle
-            )
-        }
-    }
-}
-
-@Composable
-fun SsidSelectionDialog(
-    ssids: List<String>,
-    onSsidSelected: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Wifi, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Select WiFi Network")
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ssids.forEach { ssid ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { onSsidSelected(ssid) }
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Wifi,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Text(ssid, style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        },
-        shape = RoundedCornerShape(16.dp)
-    )
-}
-
-@Composable
-fun ZoneItemCard(ssid: String, onDelete: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Wifi,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = ssid,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
-
-@Composable
-fun ModeSelectionDialog(
-    ssid: String,
-    onModeSelected: (RingerMode) -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = "Add Zone") },
-        text = {
-            Column {
-                Text(text = "Choose mode for '$ssid':")
-                Spacer(modifier = Modifier.height(16.dp))
-                Button(
-                    onClick = { onModeSelected(RingerMode.SILENT) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-                ) {
-                    Icon(
-                        Icons.Default.DoNotDisturbOn,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Silent Mode", color = MaterialTheme.colorScheme.onPrimaryContainer)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
-                    onClick = { onModeSelected(RingerMode.VIBRATE) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
-                ) {
-                    Icon(
-                        Icons.Default.Vibration,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Vibrate Mode", color = MaterialTheme.colorScheme.onSecondaryContainer)
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.LocationOn,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Column {
-                    Text(
-                        text = zone.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Text(
-                        text = "Lat: %.4f, Lon: %.4f".format(zone.latitude, zone.longitude),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            IconButton(onClick = onDelete) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
-    }
-}
+// Helper components moved to SilentZoneComponents.kt
