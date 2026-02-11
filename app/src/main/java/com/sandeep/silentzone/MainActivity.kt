@@ -117,15 +117,11 @@ class MainActivity : ComponentActivity() {
         val savedSilentSsids = prefs.getStringSet(PREF_KEY_SILENT_SSIDS, emptySet()) ?: emptySet()
         val savedVibrateSsids = prefs.getStringSet(PREF_KEY_VIBRATE_SSIDS, emptySet()) ?: emptySet()
 
-        // Migration support (optional): Check if we have old data and migrate to Silent list
-        val oldSsidSet = prefs.getStringSet("pref_selected_ssid", null)
-        val initialSilentSsids = if (oldSsidSet != null && savedSilentSsids.isEmpty()) {
-            oldSsidSet
-        } else {
-            savedSilentSsids
-        }
-
-        vm.updateSavedSilentSsids(initialSilentSsids)
+        // Migration logic removed to prevent deleted SSIDs from reappearing
+        // val oldSsidSet = prefs.getStringSet("pref_selected_ssid", null)
+        // ... (removed)
+        
+        vm.updateSavedSilentSsids(savedSilentSsids)
         vm.updateSavedVibrateSsids(savedVibrateSsids)
 
         // Observe and Save

@@ -63,6 +63,7 @@ dependencies {
     // Google Play Services
     implementation(libs.play.services.location)
     implementation(libs.gson)
+    implementation(libs.lottie.compose)
 
     // Testing
     testImplementation(libs.junit)

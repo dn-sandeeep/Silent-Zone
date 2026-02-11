@@ -267,16 +267,6 @@ fun SilentScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Add New Zone")
                         }
-
-                        OutlinedButton(
-                            onClick = { showManualInput = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Enter WiFi Name Manually")
-                        }
                     }
                 }
             }
