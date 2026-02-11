@@ -52,6 +52,18 @@ class MainActivity : ComponentActivity() {
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
             // Proceed to scan if at least relevant permissions are granted, or just try
             startWifiScan()
+            
+            // After foreground permissions are handled, check for background location
+            checkAndRequestBackgroundLocation()
+        }
+
+    private val backgroundLocationLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                Toast.makeText(this, "Background Location Granted!", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Background Location Denied. Geofencing may not work.", Toast.LENGTH_LONG).show()
+            }
         }
 
     private val wifiScanReceiver = object : BroadcastReceiver() {
@@ -261,21 +273,16 @@ class MainActivity : ComponentActivity() {
                 permissions.add(Manifest.permission.ACCESS_FINE_LOCATION)
             }
 
-            // Background Location (Android 10+) - Required for Geofencing
-            // Note: On Android 11+ (R), this must be requested SEPARATELY after Fine location.
-            // For now, let's try adding it if we are on Android 10 (Q) or valid flow.
-            // If Android 11+, we might need a separate step.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // Background Location (Android 10+)
+            // On Android 11+ (R), this must be requested SEPARATELY after Fine location.
+            // We only add it here if version is Q (10). For R+ (11+), we handle it after Foreground is granted.
+            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
                 if (ContextCompat.checkSelfPermission(
                         this,
                         Manifest.permission.ACCESS_BACKGROUND_LOCATION
                     ) != PackageManager.PERMISSION_GRANTED
                 ) {
-                    // On Android 11+, adding this with others might fail/be ignored.
-                    // But let's check if we can add it for now or if we need a separate trigger.
-                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                        permissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                    }
+                    permissions.add(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 }
             }
 
@@ -302,14 +309,54 @@ class MainActivity : ComponentActivity() {
             if (permissions.isNotEmpty()) {
                 requestPermissionLauncher.launch(permissions.toTypedArray())
             } else {
-                // If permissions logic is weird (e.g. denied permanently), we might end up here.
-                // Just try scan.
                 startWifiScan()
+                checkAndRequestBackgroundLocation() // Check if we missed background
             }
         } else {
             // We have permissions.
             startWifiScan()
+            checkAndRequestBackgroundLocation() // Check if we miss background
         }
+    }
+
+    private fun checkAndRequestBackgroundLocation() {
+        // Only needed for Android 10+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val hasBackground = ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (!hasBackground) {
+                // For Android 11+ (R), we must see if we should show rationale or just request
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    showBackgroundLocationRationale()
+                } else {
+                     // For Android 10, it could have been requested in the batch, but if we are here, it wasn't valid or denied.
+                     // We can try requesting it if we think it's worth it, or leave it.
+                     // Ideally Q handles it in the batch request.
+                }
+            }
+        }
+    }
+
+    private fun showBackgroundLocationRationale() {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Background Location Required")
+            .setMessage("To use Location-based zones while the app is closed (Geofencing), please allow 'Allow all the time' in the next screen.")
+            .setPositiveButton("OK") { _, _ ->
+                 // Request Background Location
+                 // On Android 11+, this will usually take the user to the Settings screen or a System Dialog
+                 try {
+                     backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                 } catch (e: Exception) {
+                     e.printStackTrace()
+                 }
+            }
+            .setNegativeButton("No Thanks") { dialog, _ ->
+                dialog.dismiss()
+            }
+            .show()
     }
 
     @SuppressLint("MissingPermission")
