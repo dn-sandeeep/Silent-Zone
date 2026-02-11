@@ -111,6 +111,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val ringerModeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == android.media.AudioManager.RINGER_MODE_CHANGED_ACTION) {
+                vm.refresh()
+            }
+        }
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -197,6 +205,9 @@ class MainActivity : ComponentActivity() {
         } else {
             registerReceiver(wifiScanReceiver, intentFilter)
         }
+
+        // Register Ringer Mode Receiver to update UI when mode changes (e.g. by Geofence or User)
+        registerReceiver(ringerModeReceiver, IntentFilter(android.media.AudioManager.RINGER_MODE_CHANGED_ACTION))
 
         setContent {
             SilentZoneTheme {
@@ -481,6 +492,11 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
         unregisterReceiver(wifiScanReceiver)
+        try {
+            unregisterReceiver(ringerModeReceiver)
+        } catch (e: IllegalArgumentException) {
+            // Receiver might not be registered
+        }
         networkCallback?.let {
             try {
                 connectivityManager.unregisterNetworkCallback(it)
