@@ -95,6 +95,7 @@ fun SilentScreen(
     var showAddTypeDialog by remember { mutableStateOf(false) } // Dialog to choose between WiFi and Location
 
     var showMapSelection by remember { mutableStateOf(false) }
+    var showWifiSelection by remember { mutableStateOf(false) } // Control when to show the list
 
     if (showMapSelection) {
         // Use user location or default to India Center
@@ -258,14 +259,18 @@ fun SilentScreen(
         }
 
 // Dialogs
-        if (availableSsidList.isNotEmpty()) {
+        if (showWifiSelection && availableSsidList.isNotEmpty()) {
             SsidSelectionDialog(
                 ssids = availableSsidList,
                 onSsidSelected = { ssid ->
                     pendingSsid = ssid // Store and show mode dialog next
                     onDismissDialog() // Dismiss list dialog
+                    showWifiSelection = false
                 },
-                onDismiss = onDismissDialog
+                onDismiss = {
+                    onDismissDialog()
+                    showWifiSelection = false
+                }
             )
         }
 
@@ -354,7 +359,8 @@ fun SilentScreen(
                         }
                         OutlinedButton(
                             onClick = {
-                                addZone()
+                                addZone() // Scan start
+                                showWifiSelection = true
                                 showAddTypeDialog = false
                             },
                             modifier = Modifier.fillMaxWidth()
