@@ -27,18 +27,20 @@ import com.sandeep.silentzone.RingerMode
 
 @Composable
 fun SilentZoneAnimation(mode: RingerMode) {
-    // 1. Load the Composition
-    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(R.raw.anim_normal_mode))
+    // 1. Load the Composition based on Mode
+    val animRes = if (mode == RingerMode.NORMAL) {
+        R.raw.anim_gate_open
+    } else {
+        R.raw.anim_gate_closed_dnd
+    }
+    val composition by rememberLottieComposition(LottieCompositionSpec.RawRes(animRes))
     
     // 2. Control Playback
-    // Normal Mode: Loop Forever
-    // Silent Mode: Pause at 0% (or current frame)
-    val isPlaying = mode == RingerMode.NORMAL
-    
+    // Play the animation once or loop depending on valid file
     val progress by animateLottieCompositionAsState(
         composition = composition,
         iterations = LottieConstants.IterateForever,
-        isPlaying = isPlaying,
+        isPlaying = true,
         speed = 1.0f
     )
     
@@ -91,7 +93,7 @@ fun SilentZoneAnimation(mode: RingerMode) {
                     .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = if (mode == RingerMode.SILENT) "Silent Zone Active" else "Normal Zone",
+                    text = if (mode == RingerMode.SILENT) "Gate Closed (Silent)" else "Gate Open (Normal)",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
