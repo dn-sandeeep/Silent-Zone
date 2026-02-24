@@ -41,13 +41,6 @@
 
 ---
 
-## 📸 Screenshots (Optional)
-| Home Screen | Map Selection | Zone Management |
-| :---: | :---: | :---: |
-| ![Home](https://via.placeholder.com/200x400?text=Home+Screen) | ![Map](https://via.placeholder.com/200x400?text=Map+Selection) | ![Settings](https://via.placeholder.com/200x400?text=Zone+List) |
-
----
-
 ## ⚙️ Setup & Installation
 
 1. **Clone the repository**:
