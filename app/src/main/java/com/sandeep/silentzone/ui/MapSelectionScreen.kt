@@ -41,8 +41,6 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import kotlinx.coroutines.launch
 
-data class MapZone(val latLng: LatLng, val name: String)
-
 @Composable
 fun MapSelectionScreen(
     initialLocation: LatLng,

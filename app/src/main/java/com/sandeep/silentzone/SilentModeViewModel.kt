@@ -21,12 +21,6 @@ class SilentModeViewModel(
         _availableSsidList.value = emptyList()
     }
 
-    private val _autoDetectionEnabled = MutableStateFlow(true)
-    val autoDetectionEnabled: StateFlow<Boolean> = _autoDetectionEnabled.asStateFlow()
-
-    fun setAutoDetectionEnabled(enabled: Boolean) {
-        _autoDetectionEnabled.value = enabled
-    }
     private val uiState = MutableStateFlow(
         UiState(
             accessGranted = repo.hasPolicyAccess(),
@@ -42,6 +36,10 @@ class SilentModeViewModel(
     }
     fun setSilent() {
         viewModelScope.launch {
+            if (!repo.hasPolicyAccess()) {
+                uiState.value = uiState.value.copy(message = "DND Access required to set Silent Mode")
+                return@launch
+            }
             val mode = repo.setSilent()
             uiState.value = uiState.value.copy(currentMode = mode, message = "Silent mode enabled")
         }
@@ -97,6 +95,10 @@ class SilentModeViewModel(
 
     fun setVibrate() {
         viewModelScope.launch {
+            if (!repo.hasPolicyAccess()) {
+                uiState.value = uiState.value.copy(message = "DND Access required to set Vibrate Mode")
+                return@launch
+            }
             val mode = repo.setVibrate()
             uiState.value = uiState.value.copy(currentMode = mode, message = "Vibrate mode enabled")
         }

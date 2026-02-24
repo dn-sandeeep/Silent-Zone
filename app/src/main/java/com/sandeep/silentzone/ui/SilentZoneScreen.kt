@@ -1,44 +1,31 @@
 package com.sandeep.silentzone.ui
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DoNotDisturbOn
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -53,8 +40,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sandeep.silentzone.LocationZone
@@ -75,8 +60,6 @@ fun SilentScreen(
     availableSsidList: List<String>,
     onSelectedSsid: (String, RingerMode) -> Unit, // Updated callback
     onDismissDialog: () -> Unit,
-    autoDetectionEnabled: Boolean,
-    onToggleAutoDetection: (Boolean) -> Unit,
     silentSsids: Set<String>,
     vibrateSsids: Set<String>,
     onDeleteSsid: (String) -> Unit,
@@ -89,7 +72,6 @@ fun SilentScreen(
     initialUserLocation: com.google.android.gms.maps.model.LatLng? // New parameter
 ) {
     var selectedTab by remember { mutableStateOf(0) } // 0 = Silent, 1 = Vibrate
-    //var pendingSsid by remember { mutableStateOf<String?>(null) } // Temp storage for selected SSID
     var pendingSsid by remember { mutableStateOf<String?>(null) } // Temp storage for selected SSID
     var showManualInput by remember { mutableStateOf(false) } // Manual input dialog
     var showAddTypeDialog by remember { mutableStateOf(false) } // Dialog to choose between WiFi and Location
@@ -234,11 +216,6 @@ fun SilentScreen(
 
                     // Controls & Add Button
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        AutoDetectionCard(
-                            enabled = autoDetectionEnabled,
-                            onToggle = onToggleAutoDetection
-                        )
-
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
                                 onClick = { showAddTypeDialog = true },
@@ -246,7 +223,7 @@ fun SilentScreen(
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Icon(
-                                    Icons.Default.DoNotDisturbOn,
+                                    Icons.Default.Add,
                                     contentDescription = null
                                 ) // Generic icon
                                 Spacer(modifier = Modifier.width(8.dp))
