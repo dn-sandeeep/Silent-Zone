@@ -35,6 +35,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -52,10 +53,7 @@ import com.sandeep.silentzone.RingerMode
 fun SilentScreen(
     accessGranted: Boolean,
     mode: RingerMode,
-    message: String?,
     onGrantAccess: () -> Unit,
-    setSilent: () -> Unit,
-    setNormal: () -> Unit,
     addZone: () -> Unit,
     availableSsidList: List<String>,
     onSelectedSsid: (String, RingerMode) -> Unit, // Updated callback
@@ -64,17 +62,16 @@ fun SilentScreen(
     vibrateSsids: Set<String>,
     onDeleteSsid: (String) -> Unit,
     wifiPermissionGranted: Boolean,
-    currentWifiSsid: String?,
     locationZones: List<LocationZone>,
     onAddLocationZone: (RingerMode) -> Unit,
     onMapZonesSelected: (List<MapZone>, RingerMode) -> Unit,
     onDeleteLocationZone: (String) -> Unit,
     initialUserLocation: com.google.android.gms.maps.model.LatLng? // New parameter
 ) {
-    var selectedTab by remember { mutableStateOf(0) } // 0 = Silent, 1 = Vibrate
+    var selectedTab by remember { mutableIntStateOf(0) } // 0 = Silent, 1 = Vibrate
     var pendingSsid by remember { mutableStateOf<String?>(null) } // Temp storage for selected SSID
     var showManualInput by remember { mutableStateOf(false) } // Manual input dialog
-    var showAddTypeDialog by remember { mutableStateOf(false) } // Dialog to choose between WiFi and Location
+    var showAddTypeDialog by remember { mutableStateOf(false) } // Dialog to choose between Wi-Fi and Location
 
     var showMapSelection by remember { mutableStateOf(false) }
     var showWifiSelection by remember { mutableStateOf(false) } // Control when to show the list
@@ -180,7 +177,7 @@ fun SilentScreen(
                             }
                         }
 
-                        // WiFi Zones Section
+                        // Wi-Fi Zones Section
                         if (currentWifiList.isNotEmpty()) {
                             item {
                                 Text(
@@ -329,7 +326,7 @@ fun SilentScreen(
                         ) {
                             Icon(com.google.android.gms.maps.model.BitmapDescriptorFactory.HUE_RED.let {
                                 // Using generic map icon here
-                                androidx.compose.material.icons.Icons.Default.Map
+                                Icons.Default.Map
                             }, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Select on Map")

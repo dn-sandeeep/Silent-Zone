@@ -11,12 +11,10 @@ import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
-import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -142,12 +140,9 @@ class MainActivity : ComponentActivity() {
                         SilentScreen(
                             accessGranted = state.accessGranted,
                             mode = state.currentMode,
-                            message = state.message,
                             onGrantAccess = {
                                 startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
                             },
-                            setSilent = vm::setSilent,
-                            setNormal = vm::setNormal,
                             addZone = { checkPermissionAndStartScan() },
                             availableSsidList = availableSsidList,
                             onSelectedSsid = { ssid, mode -> saveSsid(ssid, mode) },
@@ -159,7 +154,6 @@ class MainActivity : ComponentActivity() {
                                 if (ssid == currentWifiSsid) vm.setNormal()
                             },
                             wifiPermissionGranted = wifiPermissionGranted(),
-                            currentWifiSsid = currentWifiSsid,
                             locationZones = locationZones,
                             onAddLocationZone = { mode -> vm.addCurrentLocationZone(mode) },
                             onMapZonesSelected = { zones, mode ->
