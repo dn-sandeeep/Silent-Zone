@@ -1,6 +1,16 @@
 package com.sandeep.silentzone.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -11,16 +21,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DoNotDisturbOn
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
@@ -36,9 +50,15 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -47,6 +67,125 @@ import androidx.compose.material3.IconButtonDefaults
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
+
+@Composable
+fun PulseStatusHeader(mode: RingerMode) {
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    
+    val pulseScale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 2.5f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulseScale"
+    )
+    
+    val pulseAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.5f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "pulseAlpha"
+    )
+
+    val floatingOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = -15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "floatingOffset"
+    )
+
+    val headerColor by animateColorAsState(
+        targetValue = when (mode) {
+            RingerMode.SILENT -> Color(0xFF673AB7)
+            RingerMode.VIBRATE -> Color(0xFF009688)
+            RingerMode.NORMAL -> Color(0xFF2196F3)
+        },
+        label = "headerColor"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(280.dp),
+        shape = RoundedCornerShape(bottomStart = 20.dp, bottomEnd = 20.dp),
+        colors = CardDefaults.cardColors(containerColor = headerColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            // Animated Pulse Rings
+            Canvas(modifier = Modifier.size(200.dp)) {
+                drawCircle(
+                    color = Color.White,
+                    radius = (size.minDimension / 2) * pulseScale,
+                    alpha = pulseAlpha,
+                    style = Stroke(width = 4.dp.toPx())
+                )
+            }
+
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Floating Icon Box
+                Box(
+                    modifier = Modifier
+                        .size(100.dp)
+                        .offset(y = floatingOffset.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.2f))
+                        .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+
+                    Icon(
+                        imageVector = when (mode) {
+                            RingerMode.SILENT -> Icons.Default.NotificationsOff
+                            RingerMode.VIBRATE -> Icons.Default.Vibration
+                            RingerMode.NORMAL -> Icons.Default.NotificationsActive
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = Color.White
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = when (mode) {
+                        RingerMode.SILENT -> "Silent Mode"
+                        RingerMode.VIBRATE -> "Vibrate Mode"
+                        RingerMode.NORMAL -> "Normal Mode"
+                    },
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
+                
+                Text(
+                    text = when (mode) {
+                        RingerMode.SILENT -> "All sounds are muted"
+                        RingerMode.VIBRATE -> "Haptic feedback only"
+                        RingerMode.NORMAL -> "Calls and notifications enabled"
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.8f)
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun ImportantContactItemCard(contact: ImportantContact, onDelete: () -> Unit) {

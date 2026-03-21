@@ -82,6 +82,7 @@ dependencies {
     implementation(libs.lottie.compose)
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
+    implementation(libs.androidx.compose.foundation)
 
     // Testing
     testImplementation(libs.junit)

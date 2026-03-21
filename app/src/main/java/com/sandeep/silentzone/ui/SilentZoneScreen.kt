@@ -242,65 +242,69 @@ fun DashboardScreen(
     currentWifiSsid: String?
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
+        modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        SilentZoneAnimation(mode = mode)
+        // Premium Animated Header
+        PulseStatusHeader(mode = mode)
 
-        if (!accessGranted) {
-            PermissionWarningCard(onGrantAccess = onGrantAccess)
-        }
-
-        DashboardSectionHeader("Quick Controls")
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            ModeToggleCard(
-                title = "Normal",
-                icon = Icons.Default.NotificationsActive,
-                isActive = mode == RingerMode.NORMAL,
-                onClick = setNormal,
-                activeColor = MaterialTheme.colorScheme.primary
-            )
-            ModeToggleCard(
-                title = "Vibrate",
-                icon = Icons.Default.Vibration,
-                isActive = mode == RingerMode.VIBRATE,
-                onClick = setVibrate,
-                activeColor = MaterialTheme.colorScheme.secondary
-            )
-            ModeToggleCard(
-                title = "Silent",
-                icon = Icons.Default.DoNotDisturbOn,
-                isActive = mode == RingerMode.SILENT,
-                onClick = setSilent,
-                activeColor = MaterialTheme.colorScheme.tertiary
-            )
-        }
+            if (!accessGranted) {
+                PermissionWarningCard(onGrantAccess = onGrantAccess)
+            }
 
-        DashboardSectionHeader("Current Status")
-        
-        PermissionStatusCard(
-            wifiPermissionGranted = wifiPermissionGranted,
-            onRequestWifiPermission = {}
-        )
-        
-        if (currentWifiSsid != null) {
-            Card(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                colors = androidx.compose.material3.CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                ),
-                shape = RoundedCornerShape(16.dp)
+            DashboardSectionHeader("Quick Controls")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text("Connected to: $currentWifiSsid", fontWeight = FontWeight.Bold)
+                ModeToggleCard(
+                    title = "Normal",
+                    icon = Icons.Default.NotificationsActive,
+                    isActive = mode == RingerMode.NORMAL,
+                    onClick = setNormal,
+                    activeColor = MaterialTheme.colorScheme.primary
+                )
+                ModeToggleCard(
+                    title = "Vibrate",
+                    icon = Icons.Default.Vibration,
+                    isActive = mode == RingerMode.VIBRATE,
+                    onClick = setVibrate,
+                    activeColor = MaterialTheme.colorScheme.secondary
+                )
+                ModeToggleCard(
+                    title = "Silent",
+                    icon = Icons.Default.DoNotDisturbOn,
+                    isActive = mode == RingerMode.SILENT,
+                    onClick = setSilent,
+                    activeColor = MaterialTheme.colorScheme.tertiary
+                )
+            }
+
+            DashboardSectionHeader("Current Status")
+            
+            PermissionStatusCard(
+                wifiPermissionGranted = wifiPermissionGranted,
+                onRequestWifiPermission = {}
+            )
+            
+            if (currentWifiSsid != null) {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                    colors = androidx.compose.material3.CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.primary)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text("Connected to: $currentWifiSsid", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
         }
