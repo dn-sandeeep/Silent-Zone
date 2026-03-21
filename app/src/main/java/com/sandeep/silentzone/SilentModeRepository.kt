@@ -16,6 +16,12 @@ data class LocationZone(
     val mode: RingerMode = RingerMode.SILENT // Default for migration
 )
 
+data class ImportantContact(
+    val id: String,
+    val name: String,
+    val phoneNumber: String
+)
+
 class SilentModeRepository(
     private val appContext: Context
 ) {
@@ -27,6 +33,7 @@ class SilentModeRepository(
     private val geofenceManager = SilentZoneGeofenceManager(appContext)
     private val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(appContext)
     private val prefs: SharedPreferences = appContext.getSharedPreferences("location_zones", Context.MODE_PRIVATE)
+    private val contactPrefs: SharedPreferences = appContext.getSharedPreferences("important_contacts", Context.MODE_PRIVATE)
     private val gson = Gson()
 
     @android.annotation.SuppressLint("MissingPermission")
@@ -126,5 +133,42 @@ class SilentModeRepository(
     private fun saveLocationZones(zones: List<LocationZone>) {
         val json = gson.toJson(zones)
         prefs.edit().putString("zones", json).apply()
+    }
+
+    // Important Contact Management
+    fun getImportantContacts(): List<ImportantContact> {
+        val json = contactPrefs.getString("contacts", null) ?: return emptyList()
+        val type = object : TypeToken<List<ImportantContact>>() {}.type
+        return gson.fromJson(json, type) ?: emptyList()
+    }
+
+    fun addImportantContact(contact: ImportantContact) {
+        val current = getImportantContacts().toMutableList()
+        if (current.none { it.phoneNumber == contact.phoneNumber }) {
+            current.add(contact)
+            saveImportantContacts(current)
+        }
+    }
+
+    fun removeImportantContact(phoneNumber: String) {
+        val current = getImportantContacts().toMutableList()
+        current.removeAll { it.phoneNumber == phoneNumber }
+        saveImportantContacts(current)
+    }
+
+    private fun saveImportantContacts(contacts: List<ImportantContact>) {
+        val json = gson.toJson(contacts)
+        contactPrefs.edit().putString("contacts", json).apply()
+    }
+
+    fun isImportantContact(phoneNumber: String): Boolean {
+        val normalizedIncoming = normalizePhoneNumber(phoneNumber)
+        return getImportantContacts().any { 
+            normalizePhoneNumber(it.phoneNumber) == normalizedIncoming 
+        }
+    }
+
+    private fun normalizePhoneNumber(phone: String): String {
+        return phone.replace(Regex("[^0-9+]"), "")
     }
 }

@@ -36,10 +36,6 @@ class SilentModeViewModel(
     }
     fun setSilent() {
         viewModelScope.launch {
-            if (!repo.hasPolicyAccess()) {
-                uiState.value = uiState.value.copy(message = "DND Access required to set Silent Mode")
-                return@launch
-            }
             val mode = repo.setSilent()
             uiState.value = uiState.value.copy(currentMode = mode, message = "Silent mode enabled")
         }
@@ -95,10 +91,6 @@ class SilentModeViewModel(
 
     fun setVibrate() {
         viewModelScope.launch {
-            if (!repo.hasPolicyAccess()) {
-                uiState.value = uiState.value.copy(message = "DND Access required to set Vibrate Mode")
-                return@launch
-            }
             val mode = repo.setVibrate()
             uiState.value = uiState.value.copy(currentMode = mode, message = "Vibrate mode enabled")
         }
@@ -114,12 +106,37 @@ class SilentModeViewModel(
     private val _locationZones = MutableStateFlow<List<LocationZone>>(emptyList())
     val locationZones: StateFlow<List<LocationZone>> = _locationZones.asStateFlow()
 
+    private val _importantContacts = MutableStateFlow<List<ImportantContact>>(emptyList())
+    val importantContacts: StateFlow<List<ImportantContact>> = _importantContacts.asStateFlow()
+
     init {
         refreshLocationZones()
+        refreshImportantContacts()
     }
 
     fun refreshLocationZones() {
         _locationZones.value = repo.getLocationZones()
+    }
+
+    fun refreshImportantContacts() {
+        _importantContacts.value = repo.getImportantContacts()
+    }
+
+    fun addImportantContact(name: String, phoneNumber: String) {
+        val contact = ImportantContact(
+            id = java.util.UUID.randomUUID().toString(),
+            name = name,
+            phoneNumber = phoneNumber
+        )
+        repo.addImportantContact(contact)
+        refreshImportantContacts()
+        uiState.value = uiState.value.copy(message = "Important contact added!")
+    }
+
+    fun removeImportantContact(phoneNumber: String) {
+        repo.removeImportantContact(phoneNumber)
+        refreshImportantContacts()
+        uiState.value = uiState.value.copy(message = "Important contact removed!")
     }
 
     fun addCurrentLocationZone(mode: RingerMode) {
