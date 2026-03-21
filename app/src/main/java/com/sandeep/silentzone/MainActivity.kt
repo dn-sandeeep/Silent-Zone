@@ -210,6 +210,7 @@ class MainActivity : ComponentActivity() {
                                 startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
                             },
                             setSilent = vm::setSilent,
+                            setVibrate = vm::setVibrate,
                             setNormal = vm::setNormal,
                             addZone = { startWifiScan() },
                             availableSsidList = availableSsidList,
