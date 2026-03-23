@@ -26,7 +26,15 @@ SilentZone is an intelligent Android application designed to automate phone ring
 
 ## 🛠️ Upcoming Features (Roadmap)
 
-### Phase 1: Enhanced Control & Customization
+### Phase 1: Enhanced Engagement & Gamification (High Priority)
+*   **Focus Analytics & Zen Score:**
+    *   Dashboard showing "Time Spent in Focus/Silent Mode" and "Total Interruptions Blocked."
+    *   Gamified "Zen Score" to motivate users to maintain productive, distraction-free habits.
+*   **Calendar Sync (Meeting Mode):**
+    *   Integrate with Google Calendar to automatically silence the phone during events marked as "Busy".
+    *   Restore normal mode when the meeting ends.
+
+### Phase 2: Enhanced Control & Customization
 *   **Time-Based Scheduling:**
     *   "Quiet Hours" feature (e.g., Sleep Mode from 11 PM to 7 AM).
     *   Weekly recurring schedules (Work hours vs. Weekend).
