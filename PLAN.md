@@ -26,41 +26,40 @@ SilentZone is an intelligent Android application designed to automate phone ring
 
 ## 🛠️ Upcoming Features (Roadmap)
 
-### Phase 1: Enhanced Engagement & Gamification (High Priority)
-*   **Focus Analytics & Zen Score:**
-    *   Dashboard showing "Time Spent in Focus/Silent Mode" and "Total Interruptions Blocked."
-    *   Gamified "Zen Score" to motivate users to maintain productive, distraction-free habits.
+### Phase 1: Deep Engagement & Gamification (Extreme Priority)
+*   **Focus Analytics & Zen Journey:**
+    *   **Zen Levels & Progression:** Leveling system (Seedling -> Sprout -> Tree) based on total focus hours.
+    *   **Interactive Dashboard:** Weekly comparison graphs showing "Time Saved" and "Interruption Heatmaps."
+    *   **Focus Streaks:** Daily streak counters and rewards to motivate daily usage.
+    *   **Smart Nudges:** Gentle notifications if the user uses the phone too much while in a Silent Zone.
+*   **Deep Work Tools:**
+    *   **Deep Work Timer:** Integration of a Pomodoro-style timer when entering a Silent Zone.
+    *   **Ambient Focus Sounds:** Optional background White Noise, Rain, or Lo-fi beats while in Focus Mode.
+*   **Social & Personalization:**
+    *   **Adaptive Themes:** Unlocking special app skins (e.g., "Golden Zen") as the user levels up.
+    *   **Zen Leaderboard:** Compare focus streaks and hours with friends.
+    *   **Shareable Achievements:** Beautifully designed focus summaries for social media.
 *   **Calendar Sync (Meeting Mode):**
-    *   Integrate with Google Calendar to automatically silence the phone during events marked as "Busy".
-    *   Restore normal mode when the meeting ends.
+    *   Automatic silence based on "Busy" status in Google Calendar.
 
 ### Phase 2: Enhanced Control & Customization
 *   **Time-Based Scheduling:**
     *   "Quiet Hours" feature (e.g., Sleep Mode from 11 PM to 7 AM).
     *   Weekly recurring schedules (Work hours vs. Weekend).
 *   **Important Whitelist (Emergency Bypass):**
-    *   Allow specific contacts (Family, Boss) to ring through even in Silent/DND mode.
-    *   "Repeat Caller" bypass (if someone calls 3 times in 5 minutes).
+    *   Allow specific contacts to ring through.
+    *   "Repeat Caller" bypass logic.
 
-### Phase 2: Sensor & Peripheral Triggers
-*   **Bluetooth Connectivity:**
-    *   Switch to "Vibrate" when connected to Car Bluetooth.
-    *   Switch to "Normal" when connected to Home Audio.
-*   **Flip-to-Shhh:**
-    *   Use the accelerometer/proximity sensor to silence the phone when placed face-down.
-
-### Phase 3: Intelligent Messaging
-*   **Zone-Specific Auto-Replies:**
-    *   "I'm at the library, text me" (Library Zone).
-    *   "Driving, will call back later" (Car Bluetooth).
-*   **AI Context Analysis:** Use on-device NLP to determine if a calendar event is a "Meeting" vs. "Social" to decide whether to silence.
+### Phase 3: Sensor & Peripheral Triggers
+*   **Bluetooth Connectivity:** Auto-switch modes based on connected Bluetooth devices (Car, Home Audio).
+*   **Flip-to-Shhh:** Silence phone when placed face-down on a surface.
 
 ---
 
 ## 🏗️ Technical Architecture Improvements
 *   **Dagger/Hilt Integration:** Refactor for better Dependency Injection.
-*   **WorkManager:** Migrate background tasks (WiFi scanning, Geofence registration) to `WorkManager` for better battery efficiency.
-*   **Room Database:** Persist all zones, schedules, and Important lists locally with robust data migration.
+*   **WorkManager:** Background task optimization for battery efficiency.
+*   **Room Database:** Persistent storage for Focus analytics, Zones, and Whitelists.
 
 ---
 
@@ -70,6 +69,7 @@ SilentZone is an intelligent Android application designed to automate phone ring
 - [x] Calendar Context Engine
 - [ ] Time-Based Scheduler UI & Logic
 - [x] Important Whitelist Contact Picker
-- [ ] Bluetooth Receiver Implementation
+- [ ] Deep Work Timer Logic
+- [ ] Focus Analytics Database (Room)
+- [ ] Ambient Sound Player Implementation
 - [ ] Sensor-based "Flip-to-Shhh"
-- [ ] Enhanced Room Database Migration
