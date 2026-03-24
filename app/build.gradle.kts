@@ -25,15 +25,17 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
-        // Read API Key from local.properties
+        // Read API Key and Project ID from local.properties
         val localProperties = Properties()
         val localPropertiesFile = rootProject.file("local.properties")
         if (localPropertiesFile.exists()) {
             localProperties.load(FileInputStream(localPropertiesFile))
         }
         val mapsApiKey = localProperties.getProperty("MAPS_API_KEY") ?: ""
+        val clarityProjectId = localProperties.getProperty("CLARITY_PROJECT_ID") ?: ""
         
         manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "CLARITY_PROJECT_ID", "\"${clarityProjectId}\"")
     }
 
     buildTypes {
@@ -54,6 +56,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -85,6 +88,7 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.androidx.compose.foundation)
+    implementation(libs.microsoft.clarity)
 
     // Hilt
     implementation(libs.hilt.android)

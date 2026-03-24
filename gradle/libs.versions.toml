@@ -21,8 +21,10 @@ lottie = "6.0.0"
 maps-compose = "6.1.0"
 play-services-maps = "19.0.0"
 foundation = "1.10.5"
+clarity = "3.1.0"
 
 [libraries]
+microsoft-clarity = { group = "com.microsoft.clarity", name = "clarity-compose", version.ref = "clarity" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
