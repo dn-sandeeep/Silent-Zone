@@ -47,6 +47,14 @@
         <receiver android:name=".GeofenceBroadcastReceiver"
             android:enabled="true"
             android:exported="true" />
+
+        <receiver android:name=".WifiBroadcastReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.wifi.STATE_CHANGE" />
+            </intent-filter>
+        </receiver>
             
         <receiver android:name=".CallReceiver"
             android:enabled="true"

@@ -24,4 +24,14 @@ interface SilentZoneDao {
 
     @Query("DELETE FROM important_contacts WHERE phoneNumber = :phoneNumber")
     suspend fun deleteImportantContactByNumber(phoneNumber: String)
+
+    // WiFi Zones
+    @Query("SELECT * FROM wifi_zones")
+    fun getAllWifiZones(): Flow<List<WifiZoneEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWifiZone(zone: WifiZoneEntity)
+
+    @Query("DELETE FROM wifi_zones WHERE ssid = :ssid")
+    suspend fun deleteWifiZoneBySsid(ssid: String)
 }

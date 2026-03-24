@@ -46,6 +46,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -64,6 +66,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
@@ -604,6 +609,73 @@ fun ModeSelectionDialog(
 }
 
 @Composable
+fun RadiusSelectionDialog(
+    onRadiusSelected: (Float) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var radius by remember { mutableStateOf(100f) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Zone Radius", fontWeight = FontWeight.Bold) },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Choose the size of your silent zone (radius in meters).",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "${radius.toInt()} meters",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Slider(
+                    value = radius,
+                    onValueChange = { radius = it },
+                    valueRange = 50f..1000f,
+                    steps = 18, // 50m intervals
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("50m", style = MaterialTheme.typography.labelSmall)
+                    Text("1km", style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onRadiusSelected(radius) },
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Select Radius")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        shape = RoundedCornerShape(28.dp)
+    )
+}
+
+@Composable
 fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -620,7 +692,8 @@ fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.weight(1f)
             ) {
                 Box(
                     modifier = Modifier
@@ -643,7 +716,7 @@ fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Lat: %.4f, Lon: %.4f".format(zone.latitude, zone.longitude),
+                        text = "${zone.radius.toInt()}m radius • %.4f, %.4f".format(zone.latitude, zone.longitude),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

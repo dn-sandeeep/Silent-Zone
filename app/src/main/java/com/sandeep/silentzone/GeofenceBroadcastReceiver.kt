@@ -69,7 +69,10 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                     try {
                         for (geofence in triggeringGeofences) {
                             val requestId = geofence.requestId
-                            handleTransition(context, geofenceTransition, requestId)
+                            repository.onLocationTransition(
+                                requestId, 
+                                geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER
+                            )
                         }
                     } finally {
                         pendingResult.finish()
@@ -99,27 +102,6 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(true)
             .build()
-    }
-
-    private suspend fun handleTransition(context: Context, transition: Int, requestId: String) {
-        val zones = repository.getLocationZones()
-        val zone = zones.find { it.id == requestId }
-        
-        if (zone == null) {
-             return
-        }
-
-        if (transition == Geofence.GEOFENCE_TRANSITION_ENTER) {
-            Toast.makeText(context, "Entering ${zone.name} -> ${zone.mode}", Toast.LENGTH_SHORT).show()
-             when (zone.mode) {
-                RingerMode.SILENT -> repository.setSilent()
-                RingerMode.VIBRATE -> repository.setVibrate()
-                else -> repository.setSilent()
-            }
-        } else if (transition == Geofence.GEOFENCE_TRANSITION_EXIT) {
-            Toast.makeText(context, "Exiting ${zone.name} -> Normal", Toast.LENGTH_SHORT).show()
-            repository.setNormal()
-        }
     }
 
     companion object {

@@ -6,15 +6,12 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.SharedPreferences
 import android.content.pm.PackageManager
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
 import android.net.Uri
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
+import android.provider.ContactsContract
 import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
@@ -32,29 +29,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.lifecycleScope
-import com.sandeep.silentzone.ui.SilentScreen
-import com.sandeep.silentzone.ui.theme.SilentZoneTheme
-import kotlinx.coroutines.launch
-
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
-import com.sandeep.silentzone.ui.MapZone
-
-import android.provider.ContactsContract
-import com.sandeep.silentzone.ImportantContact
+import com.sandeep.silentzone.ui.SilentScreen
+import com.sandeep.silentzone.ui.theme.SilentZoneTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     private val vm: SilentModeViewModel by viewModels()
-    private lateinit var connectivityManager: ConnectivityManager
-    private var networkCallback: ConnectivityManager.NetworkCallback? = null
-    private lateinit var prefs: SharedPreferences
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var currentLocation: com.google.android.gms.maps.model.LatLng? by mutableStateOf(null)
 
-    // 1. Launcher to pick a contact
     private val pickContactLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             val contactUri = result.data?.data
@@ -64,7 +50,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // 2. Launcher to request all 3 mandatory permissions
     private val contactPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
         val contactsGranted = permissions[Manifest.permission.READ_CONTACTS] ?: (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED)
         val callLogGranted = permissions[Manifest.permission.READ_CALL_LOG] ?: (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED)
@@ -114,12 +99,6 @@ class MainActivity : ComponentActivity() {
         contactPermissionLauncher.launch(permissions)
     }
 
-    companion object {
-        private const val PREFS_NAME = "silent_prefs"
-        private const val PREF_KEY_SILENT_SSIDS = "pref_silent_ssids"
-        private const val PREF_KEY_VIBRATE_SSIDS = "pref_vibrate_ssids"
-    }
-
     private val requestPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { 
             startWifiScan()
@@ -159,38 +138,42 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private val networkCallback = object : android.net.ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: android.net.Network) {
+            runOnUiThread {
+                vm.checkWifiConnection(getCurrentSsid())
+            }
+        }
+        override fun onLost(network: android.net.Network) {
+            runOnUiThread {
+                vm.checkWifiConnection(null)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         fetchCurrentLocation()
-        prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-        val savedSilentSsids = prefs.getStringSet(PREF_KEY_SILENT_SSIDS, emptySet()) ?: emptySet()
-        val savedVibrateSsids = prefs.getStringSet(PREF_KEY_VIBRATE_SSIDS, emptySet()) ?: emptySet()
-        vm.updateSavedSilentSsids(savedSilentSsids)
-        vm.updateSavedVibrateSsids(savedVibrateSsids)
-
-        lifecycleScope.launch {
-            vm.savedSilentSsids.collect { ssids ->
-                prefs.edit().putStringSet(PREF_KEY_SILENT_SSIDS, ssids).apply()
-            }
-        }
-        lifecycleScope.launch {
-            vm.savedVibrateSsids.collect { ssids ->
-                prefs.edit().putStringSet(PREF_KEY_VIBRATE_SSIDS, ssids).apply()
-            }
-        }
-
-        connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        
-        val intentFilter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
+        val scanFilter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(wifiScanReceiver, intentFilter, Context.RECEIVER_NOT_EXPORTED)
+            registerReceiver(wifiScanReceiver, scanFilter, Context.RECEIVER_NOT_EXPORTED)
         } else {
-            registerReceiver(wifiScanReceiver, intentFilter)
+            registerReceiver(wifiScanReceiver, scanFilter)
         }
         registerReceiver(ringerModeReceiver, IntentFilter(android.media.AudioManager.RINGER_MODE_CHANGED_ACTION))
+
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val networkRequest = android.net.NetworkRequest.Builder()
+                .addTransportType(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+                .build()
+            connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
+        } catch (e: Exception) {
+            Log.e("MainActivity", "Failed to register network callback: ${e.message}")
+        }
 
         setContent {
             SilentZoneTheme {
@@ -198,11 +181,13 @@ class MainActivity : ComponentActivity() {
                     Surface(Modifier.fillMaxSize()) {
                         val state = vm.uiStateFlow.collectAsStateWithLifecycle().value
                         val availableSsidList = vm.availableSsidList.collectAsStateWithLifecycle().value
-                        val silentSsids = vm.savedSilentSsids.collectAsStateWithLifecycle().value
-                        val vibrateSsids = vm.savedVibrateSsids.collectAsStateWithLifecycle().value
+                        val wifiZones = vm.wifiZones.collectAsStateWithLifecycle().value
                         val locationZones = vm.locationZones.collectAsStateWithLifecycle().value
                         val importantContacts = vm.importantContacts.collectAsStateWithLifecycle().value
                         val currentWifiSsid = getCurrentSsid()
+
+                        val silentSsids = wifiZones.filter { it.mode == RingerMode.SILENT }.map { it.ssid }.toSet()
+                        val vibrateSsids = wifiZones.filter { it.mode == RingerMode.VIBRATE }.map { it.ssid }.toSet()
 
                         SilentScreen(
                             accessGranted = state.accessGranted,
@@ -221,16 +206,15 @@ class MainActivity : ComponentActivity() {
                             silentSsids = silentSsids,
                             vibrateSsids = vibrateSsids,
                             onDeleteSsid = { ssid ->
-                                vm.removeSsid(ssid)
-                                if (ssid == currentWifiSsid) vm.setNormal()
+                                vm.removeWifiZone(ssid)
                             },
                             wifiPermissionGranted = wifiPermissionGranted(),
                             currentWifiSsid = currentWifiSsid,
                             locationZones = locationZones,
-                            onAddLocationZone = { mode -> vm.addCurrentLocationZone(mode) },
-                            onMapZonesSelected = { zones, mode ->
+                            onAddLocationZone = { mode, radius -> vm.addCurrentLocationZone(mode, radius) },
+                            onMapZonesSelected = { zones, mode, radius ->
                                 zones.forEach { zone ->
-                                    vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode)
+                                    vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode, radius)
                                 }
                             },
                             onDeleteLocationZone = { id -> vm.removeLocationZone(id) },
@@ -243,7 +227,6 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        registerWiFiNetworkCallback()
         checkPermissionAndStartScan()
     }
 
@@ -318,13 +301,16 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.refresh()
-        checkCurrentConnection()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         try { unregisterReceiver(wifiScanReceiver) } catch (e: Exception) {}
         try { unregisterReceiver(ringerModeReceiver) } catch (e: Exception) {}
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            connectivityManager.unregisterNetworkCallback(networkCallback)
+        } catch (e: Exception) {}
     }
 
     private fun wifiPermissionGranted(): Boolean {
@@ -334,26 +320,6 @@ class MainActivity : ComponentActivity() {
             return ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) == PackageManager.PERMISSION_GRANTED
         }
         return true
-    }
-
-    private fun registerWiFiNetworkCallback() {
-        val request = NetworkRequest.Builder().addTransportType(NetworkCapabilities.TRANSPORT_WIFI).build()
-        networkCallback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: android.net.Network) { checkCurrentConnection() }
-            override fun onLost(network: android.net.Network) {
-                if (!vm.uiStateFlow.value.accessGranted) return
-                runOnUiThread { vm.setNormal() }
-            }
-        }
-        connectivityManager.registerNetworkCallback(request, networkCallback!!)
-    }
-
-    private fun checkCurrentConnection() {
-        if (!vm.uiStateFlow.value.accessGranted) return
-        val ssid = getCurrentSsid() ?: return
-        if (vm.savedSilentSsids.value.contains(ssid)) runOnUiThread { vm.setSilent() }
-        else if (vm.savedVibrateSsids.value.contains(ssid)) runOnUiThread { vm.setVibrate() }
-        else runOnUiThread { vm.setNormal() }
     }
 
     @SuppressLint("MissingPermission")
@@ -368,8 +334,7 @@ class MainActivity : ComponentActivity() {
 
     private fun saveSsid(ssid: String?, mode: RingerMode) {
         if (ssid.isNullOrBlank()) return
-        if (mode == RingerMode.SILENT) vm.addSilentSsid(ssid)
-        else if (mode == RingerMode.VIBRATE) vm.addVibrateSsid(ssid)
-        checkCurrentConnection()
+        vm.addWifiZone(ssid, mode)
+        vm.checkWifiConnection(getCurrentSsid())
     }
 }

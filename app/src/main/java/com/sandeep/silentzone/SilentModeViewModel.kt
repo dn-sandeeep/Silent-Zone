@@ -41,52 +41,25 @@ class SilentModeViewModel @Inject constructor(
             uiState.value = uiState.value.copy(currentMode = mode, message = "Silent mode enabled")
         }
     }
-    private val _savedSilentSsids = MutableStateFlow<Set<String>>(emptySet())
-    val savedSilentSsids: StateFlow<Set<String>> = _savedSilentSsids.asStateFlow()
 
-    private val _savedVibrateSsids = MutableStateFlow<Set<String>>(emptySet())
-    val savedVibrateSsids: StateFlow<Set<String>> = _savedVibrateSsids.asStateFlow()
+    val wifiZones: StateFlow<List<WifiZone>> = repo.getWifiZonesFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun updateSavedSilentSsids(ssids: Set<String>) {
-        _savedSilentSsids.value = ssids
-    }
-
-    fun updateSavedVibrateSsids(ssids: Set<String>) {
-        _savedVibrateSsids.value = ssids
-    }
-
-    fun addSilentSsid(ssid: String) {
-        val current = _savedSilentSsids.value.toMutableSet()
-        current.add(ssid)
-        // Ensure it's not in vibrate list
-        val vibrate = _savedVibrateSsids.value.toMutableSet()
-        vibrate.remove(ssid)
-
-        _savedSilentSsids.value = current
-        _savedVibrateSsids.value = vibrate
-    }
-
-    fun addVibrateSsid(ssid: String) {
-        val current = _savedVibrateSsids.value.toMutableSet()
-        current.add(ssid)
-        // Ensure it's not in silent list
-        val silent = _savedSilentSsids.value.toMutableSet()
-        silent.remove(ssid)
-
-        _savedVibrateSsids.value = current
-        _savedSilentSsids.value = silent
-    }
-
-    fun removeSsid(ssid: String) {
-        val silent = _savedSilentSsids.value.toMutableSet()
-        if (silent.remove(ssid)) {
-            _savedSilentSsids.value = silent
-            return // Optimization
+    fun addWifiZone(ssid: String, mode: RingerMode) {
+        viewModelScope.launch {
+            repo.addWifiZone(WifiZone(ssid, mode))
         }
+    }
 
-        val vibrate = _savedVibrateSsids.value.toMutableSet()
-        if (vibrate.remove(ssid)) {
-            _savedVibrateSsids.value = vibrate
+    fun checkWifiConnection(ssid: String?) {
+        viewModelScope.launch {
+            repo.onWifiChanged(ssid)
+        }
+    }
+
+    fun removeWifiZone(ssid: String) {
+        viewModelScope.launch {
+            repo.removeWifiZone(ssid)
         }
     }
 
@@ -129,10 +102,10 @@ class SilentModeViewModel @Inject constructor(
         }
     }
 
-    fun addCurrentLocationZone(mode: RingerMode) {
+    fun addCurrentLocationZone(mode: RingerMode, radius: Float = 100f) {
         repo.getCurrentLocation(
             onLocationResult = { lat, lon ->
-                addLocationZone(lat, lon, "Zone ${locationZones.value.size + 1}", mode)
+                addLocationZone(lat, lon, "Zone ${locationZones.value.size + 1}", mode, radius)
                 uiState.value = uiState.value.copy(message = "Location Zone Added!")
             },
             onError = {
@@ -142,14 +115,14 @@ class SilentModeViewModel @Inject constructor(
         )
     }
 
-    fun addLocationZone(latitude: Double, longitude: Double, name: String, mode: RingerMode) {
+    fun addLocationZone(latitude: Double, longitude: Double, name: String, mode: RingerMode, radius: Float = 100f) {
         viewModelScope.launch {
             val zone = LocationZone(
                 id = java.util.UUID.randomUUID().toString(),
                 latitude = latitude,
                 longitude = longitude,
                 name = name,
-                radius = 100f,
+                radius = radius,
                 mode = mode
             )
             repo.addLocationZone(zone)

@@ -65,6 +65,7 @@ class CallReceiver : BroadcastReceiver() {
         // 2. Meeting Mode Logic
         if (contextEngine.isUserInMeeting()) {
             Log.d(TAG, "User in meeting. Silencing call.")
+            saveCurrentMode(context, repo.getCurrentMode())
             actionManager.silencePhone()
             
             if (!incomingNumber.isNullOrEmpty()) {

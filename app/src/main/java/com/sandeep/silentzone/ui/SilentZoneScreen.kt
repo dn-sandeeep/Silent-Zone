@@ -78,8 +78,8 @@ fun SilentScreen(
     wifiPermissionGranted: Boolean,
     currentWifiSsid: String?,
     locationZones: List<LocationZone>,
-    onAddLocationZone: (RingerMode) -> Unit,
-    onMapZonesSelected: (List<MapZone>, RingerMode) -> Unit,
+    onAddLocationZone: (RingerMode, Float) -> Unit,
+    onMapZonesSelected: (List<MapZone>, RingerMode, Float) -> Unit,
     onDeleteLocationZone: (String) -> Unit,
     initialUserLocation: com.google.android.gms.maps.model.LatLng?,
     importantContacts: List<ImportantContact>,
@@ -91,13 +91,18 @@ fun SilentScreen(
     var showAddTypeDialog by remember { mutableStateOf(false) }
     var pendingSsid by remember { mutableStateOf<String?>(null) }
     var showWifiSelection by remember { mutableStateOf(false) }
+    
+    // Radius logic
+    var showRadiusDialog by remember { mutableStateOf(false) }
+    var radiusSource by remember { mutableStateOf<RadiusSource?>(null) }
 
     if (showMapSelection) {
         val startLocation = initialUserLocation ?: com.google.android.gms.maps.model.LatLng(20.5937, 78.9629)
         MapSelectionScreen(
             initialLocation = startLocation,
             onZonesSelected = { zones ->
-                onMapZonesSelected(zones, RingerMode.SILENT)
+                radiusSource = RadiusSource.Map(zones)
+                showRadiusDialog = true
                 showMapSelection = false
             },
             onCancel = { showMapSelection = false }
@@ -196,10 +201,32 @@ fun SilentScreen(
         // Dialogs
         if (showAddTypeDialog) {
             AddZoneTypeDialog(
-                onCurrentLocation = { onAddLocationZone(RingerMode.SILENT); showAddTypeDialog = false },
+                onCurrentLocation = { 
+                    radiusSource = RadiusSource.CurrentLocation
+                    showRadiusDialog = true
+                    showAddTypeDialog = false 
+                },
                 onSelectMap = { showMapSelection = true; showAddTypeDialog = false },
                 onWifi = { addZone(); showWifiSelection = true; showAddTypeDialog = false },
                 onDismiss = { showAddTypeDialog = false }
+            )
+        }
+
+        if (showRadiusDialog) {
+            RadiusSelectionDialog(
+                onRadiusSelected = { radius ->
+                    when (val source = radiusSource) {
+                        is RadiusSource.CurrentLocation -> onAddLocationZone(RingerMode.SILENT, radius)
+                        is RadiusSource.Map -> onMapZonesSelected(source.zones, RingerMode.SILENT, radius)
+                        null -> {}
+                    }
+                    showRadiusDialog = false
+                    radiusSource = null
+                },
+                onDismiss = {
+                    showRadiusDialog = false
+                    radiusSource = null
+                }
             )
         }
 
@@ -228,6 +255,11 @@ fun SilentScreen(
             )
         }
     }
+}
+
+sealed class RadiusSource {
+    object CurrentLocation : RadiusSource()
+    data class Map(val zones: List<MapZone>) : RadiusSource()
 }
 
 @Composable
