@@ -43,9 +43,11 @@ import com.sandeep.silentzone.ui.MapZone
 
 import android.provider.ContactsContract
 import com.sandeep.silentzone.ImportantContact
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
-    private val vm: SilentModeViewModel by viewModels { SilentModeViewModelFactory(this) }
+    private val vm: SilentModeViewModel by viewModels()
     private lateinit var connectivityManager: ConnectivityManager
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
     private lateinit var prefs: SharedPreferences

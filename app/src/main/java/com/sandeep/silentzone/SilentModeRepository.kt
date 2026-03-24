@@ -6,6 +6,9 @@ import android.content.SharedPreferences
 import android.media.AudioManager
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
 data class LocationZone(
     val id: String,
@@ -22,8 +25,9 @@ data class ImportantContact(
     val phoneNumber: String
 )
 
-class SilentModeRepository(
-    private val appContext: Context
+@Singleton
+class SilentModeRepository @Inject constructor(
+    @ApplicationContext private val appContext: Context
 ) {
     private val audio: AudioManager =
         appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager

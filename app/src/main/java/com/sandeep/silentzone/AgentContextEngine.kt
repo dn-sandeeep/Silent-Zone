@@ -8,9 +8,15 @@ import android.database.Cursor
 import android.provider.CalendarContract
 import android.util.Log
 import androidx.core.content.ContextCompat
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Calendar
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class AgentContextEngine(private val context: Context) {
+@Singleton
+class AgentContextEngine @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
 
     fun isUserInMeeting(): Boolean {
         // 1. Check Calendar first

@@ -12,8 +12,14 @@ import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
+
+    @Inject
+    lateinit var repository: SilentModeRepository
 
     override fun onReceive(context: Context, intent: Intent) {
         
@@ -85,7 +91,6 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
     }
 
     private fun handleTransition(context: Context, transition: Int, requestId: String) {
-        val repository = SilentModeRepository(context)
         val zones = repository.getLocationZones()
         val zone = zones.find { it.id == requestId }
         
