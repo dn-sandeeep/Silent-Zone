@@ -7,6 +7,10 @@ import android.media.AudioManager
 import android.telephony.TelephonyManager
 import android.util.Log
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -21,23 +25,32 @@ class CallReceiver : BroadcastReceiver() {
     @Inject
     lateinit var contextEngine: AgentContextEngine
 
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == TelephonyManager.ACTION_PHONE_STATE_CHANGED) {
             val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
             val incomingNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
             
-            when (state) {
-                TelephonyManager.EXTRA_STATE_RINGING -> {
-                    handleRinging(context, incomingNumber)
-                }
-                TelephonyManager.EXTRA_STATE_IDLE -> {
-                    restoreMode(context)
+            val pendingResult = goAsync()
+            scope.launch {
+                try {
+                    when (state) {
+                        TelephonyManager.EXTRA_STATE_RINGING -> {
+                            handleRinging(context, incomingNumber)
+                        }
+                        TelephonyManager.EXTRA_STATE_IDLE -> {
+                            restoreMode(context)
+                        }
+                    }
+                } finally {
+                    pendingResult.finish()
                 }
             }
         }
     }
 
-    private fun handleRinging(
+    private suspend fun handleRinging(
         context: Context,
         incomingNumber: String?
     ) {

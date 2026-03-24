@@ -13,6 +13,10 @@ import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingEvent
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -20,6 +24,8 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     @Inject
     lateinit var repository: SilentModeRepository
+
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onReceive(context: Context, intent: Intent) {
         
@@ -58,11 +64,16 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         ) {
             val triggeringGeofences = geofencingEvent.triggeringGeofences
             if (triggeringGeofences != null) {
-                for (geofence in triggeringGeofences) {
-                    val requestId = geofence.requestId
-
-                    // Handle transition
-                    handleTransition(context, geofenceTransition, requestId)
+                val pendingResult = goAsync()
+                scope.launch {
+                    try {
+                        for (geofence in triggeringGeofences) {
+                            val requestId = geofence.requestId
+                            handleTransition(context, geofenceTransition, requestId)
+                        }
+                    } finally {
+                        pendingResult.finish()
+                    }
                 }
             }
         }
@@ -90,7 +101,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             .build()
     }
 
-    private fun handleTransition(context: Context, transition: Int, requestId: String) {
+    private suspend fun handleTransition(context: Context, transition: Int, requestId: String) {
         val zones = repository.getLocationZones()
         val zone = zones.find { it.id == requestId }
         

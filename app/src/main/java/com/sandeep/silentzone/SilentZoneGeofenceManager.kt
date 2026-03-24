@@ -7,8 +7,14 @@ import android.content.Intent
 import com.google.android.gms.location.Geofence
 import com.google.android.gms.location.GeofencingRequest
 import com.google.android.gms.location.LocationServices
+import dagger.hilt.android.qualifiers.ApplicationContext
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class SilentZoneGeofenceManager(private val context: Context) {
+@Singleton
+class SilentZoneGeofenceManager @Inject constructor(
+    @ApplicationContext private val context: Context
+) {
 
     private val geofencingClient = LocationServices.getGeofencingClient(context)
 

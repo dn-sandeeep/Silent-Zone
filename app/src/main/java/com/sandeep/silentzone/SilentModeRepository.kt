@@ -2,11 +2,14 @@ package com.sandeep.silentzone
 
 import android.app.NotificationManager
 import android.content.Context
-import android.content.SharedPreferences
 import android.media.AudioManager
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import com.sandeep.silentzone.data.ImportantContactEntity
+import com.sandeep.silentzone.data.LocationZoneEntity
+import com.sandeep.silentzone.data.SilentZoneDao
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -27,18 +30,16 @@ data class ImportantContact(
 
 @Singleton
 class SilentModeRepository @Inject constructor(
-    @ApplicationContext private val appContext: Context
+    @ApplicationContext private val appContext: Context,
+    private val dao: SilentZoneDao,
+    private val geofenceManager: SilentZoneGeofenceManager
 ) {
     private val audio: AudioManager =
         appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val notif: NotificationManager =
         appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     
-    private val geofenceManager = SilentZoneGeofenceManager(appContext)
     private val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(appContext)
-    private val prefs: SharedPreferences = appContext.getSharedPreferences("location_zones", Context.MODE_PRIVATE)
-    private val contactPrefs: SharedPreferences = appContext.getSharedPreferences("important_contacts", Context.MODE_PRIVATE)
-    private val gson = Gson()
 
     @android.annotation.SuppressLint("MissingPermission")
     fun getCurrentLocation(onLocationResult: (Double, Double) -> Unit, onError: () -> Unit) {
@@ -46,8 +47,6 @@ class SilentModeRepository @Inject constructor(
              if (location != null) {
                  onLocationResult(location.latitude, location.longitude)
              } else {
-                 // Request fresh location or just error out for simplicity in this step
-                 // Ideally we should request location updates, but lastLocation is often sufficient if recent
                  onError()
              }
         }.addOnFailureListener {
@@ -56,7 +55,6 @@ class SilentModeRepository @Inject constructor(
     }
 
     fun hasPolicyAccess(): Boolean {
-        // Check both policy access and audio Manager mode
         return notif.isNotificationPolicyAccessGranted
     }
 
@@ -75,8 +73,6 @@ class SilentModeRepository @Inject constructor(
             } catch (e: Exception) {
                 android.util.Log.e("SilentModeRepo", "Failed to set SILENT: ${e.message}")
             }
-        } else {
-            android.util.Log.e("SilentModeRepo", "Cannot set SILENT: No Policy Access")
         }
         return getCurrentMode()
     }
@@ -89,15 +85,11 @@ class SilentModeRepository @Inject constructor(
             } catch (e: Exception) {
                 android.util.Log.e("SilentModeRepo", "Failed to set VIBRATE: ${e.message}")
             }
-        } else {
-             android.util.Log.e("SilentModeRepo", "Cannot set VIBRATE: No Policy Access")
         }
         return getCurrentMode()
     }
 
     fun setNormal(): RingerMode {
-        // Normal mode usually doesn't need policy access unless we are currently in DND
-        // But to be safe we check, or we catch the security exception
         try {
             if (hasPolicyAccess() || audio.ringerMode != AudioManager.RINGER_MODE_SILENT) {
                  audio.ringerMode = AudioManager.RINGER_MODE_NORMAL
@@ -110,62 +102,47 @@ class SilentModeRepository @Inject constructor(
     }
     
     // Location Zone Management
-    fun getLocationZones(): List<LocationZone> {
-        val json = prefs.getString("zones", null) ?: return emptyList()
-        val type = object : TypeToken<List<LocationZone>>() {}.type
-        return gson.fromJson(json, type) ?: emptyList()
-    }
-
-    fun addLocationZone(zone: LocationZone) {
-        val current = getLocationZones().toMutableList()
-        current.add(zone)
-        saveLocationZones(current)
-        
-        // Add to Geofence Manager
-        geofenceManager.addGeofence(zone.id, zone.latitude, zone.longitude, zone.radius)
-    }
-
-    fun removeLocationZone(id: String) {
-        val current = getLocationZones().toMutableList()
-        current.removeAll { it.id == id }
-        saveLocationZones(current)
-        
-        // Remove from Geofence Manager
-        geofenceManager.removeGeofence(id)
-    }
-
-    private fun saveLocationZones(zones: List<LocationZone>) {
-        val json = gson.toJson(zones)
-        prefs.edit().putString("zones", json).apply()
-    }
-
-    // Important Contact Management
-    fun getImportantContacts(): List<ImportantContact> {
-        val json = contactPrefs.getString("contacts", null) ?: return emptyList()
-        val type = object : TypeToken<List<ImportantContact>>() {}.type
-        return gson.fromJson(json, type) ?: emptyList()
-    }
-
-    fun addImportantContact(contact: ImportantContact) {
-        val current = getImportantContacts().toMutableList()
-        if (current.none { it.phoneNumber == contact.phoneNumber }) {
-            current.add(contact)
-            saveImportantContacts(current)
+    fun getLocationZonesFlow(): Flow<List<LocationZone>> {
+        return dao.getAllLocationZones().map { entities ->
+            entities.map { it.toDomain() }
         }
     }
 
-    fun removeImportantContact(phoneNumber: String) {
-        val current = getImportantContacts().toMutableList()
-        current.removeAll { it.phoneNumber == phoneNumber }
-        saveImportantContacts(current)
+    // Keep synchronous for GeofenceReceiver for now, but use Room
+    suspend fun getLocationZones(): List<LocationZone> {
+        return getLocationZonesFlow().first()
     }
 
-    private fun saveImportantContacts(contacts: List<ImportantContact>) {
-        val json = gson.toJson(contacts)
-        contactPrefs.edit().putString("contacts", json).apply()
+    suspend fun addLocationZone(zone: LocationZone) {
+        dao.insertLocationZone(zone.toEntity())
+        geofenceManager.addGeofence(zone.id, zone.latitude, zone.longitude, zone.radius)
     }
 
-    fun isImportantContact(phoneNumber: String): Boolean {
+    suspend fun removeLocationZone(id: String) {
+        dao.deleteLocationZoneById(id)
+        geofenceManager.removeGeofence(id)
+    }
+
+    // Important Contact Management
+    fun getImportantContactsFlow(): Flow<List<ImportantContact>> {
+        return dao.getAllImportantContacts().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    suspend fun getImportantContacts(): List<ImportantContact> {
+        return getImportantContactsFlow().first()
+    }
+
+    suspend fun addImportantContact(contact: ImportantContact) {
+        dao.insertImportantContact(contact.toEntity())
+    }
+
+    suspend fun removeImportantContact(phoneNumber: String) {
+        dao.deleteImportantContactByNumber(phoneNumber)
+    }
+
+    suspend fun isImportantContact(phoneNumber: String): Boolean {
         val normalizedIncoming = normalizePhoneNumber(phoneNumber)
         return getImportantContacts().any { 
             normalizePhoneNumber(it.phoneNumber) == normalizedIncoming 
@@ -175,4 +152,10 @@ class SilentModeRepository @Inject constructor(
     private fun normalizePhoneNumber(phone: String): String {
         return phone.replace(Regex("[^0-9+]"), "")
     }
+
+    // Mappers
+    private fun LocationZoneEntity.toDomain() = LocationZone(id, latitude, longitude, name, radius, mode)
+    private fun LocationZone.toEntity() = LocationZoneEntity(id, latitude, longitude, name, radius, mode)
+    private fun ImportantContactEntity.toDomain() = ImportantContact(id, name, phoneNumber)
+    private fun ImportantContact.toEntity() = ImportantContactEntity(id, name, phoneNumber)
 }

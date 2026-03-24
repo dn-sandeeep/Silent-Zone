@@ -4,9 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -106,40 +104,29 @@ class SilentModeViewModel @Inject constructor(
         }
     }
 
-    private val _locationZones = MutableStateFlow<List<LocationZone>>(emptyList())
-    val locationZones: StateFlow<List<LocationZone>> = _locationZones.asStateFlow()
+    val locationZones: StateFlow<List<LocationZone>> = repo.getLocationZonesFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    private val _importantContacts = MutableStateFlow<List<ImportantContact>>(emptyList())
-    val importantContacts: StateFlow<List<ImportantContact>> = _importantContacts.asStateFlow()
-
-    init {
-        refreshLocationZones()
-        refreshImportantContacts()
-    }
-
-    fun refreshLocationZones() {
-        _locationZones.value = repo.getLocationZones()
-    }
-
-    fun refreshImportantContacts() {
-        _importantContacts.value = repo.getImportantContacts()
-    }
+    val importantContacts: StateFlow<List<ImportantContact>> = repo.getImportantContactsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun addImportantContact(name: String, phoneNumber: String) {
-        val contact = ImportantContact(
-            id = java.util.UUID.randomUUID().toString(),
-            name = name,
-            phoneNumber = phoneNumber
-        )
-        repo.addImportantContact(contact)
-        refreshImportantContacts()
-        uiState.value = uiState.value.copy(message = "Important contact added!")
+        viewModelScope.launch {
+            val contact = ImportantContact(
+                id = java.util.UUID.randomUUID().toString(),
+                name = name,
+                phoneNumber = phoneNumber
+            )
+            repo.addImportantContact(contact)
+            uiState.value = uiState.value.copy(message = "Important contact added!")
+        }
     }
 
     fun removeImportantContact(phoneNumber: String) {
-        repo.removeImportantContact(phoneNumber)
-        refreshImportantContacts()
-        uiState.value = uiState.value.copy(message = "Important contact removed!")
+        viewModelScope.launch {
+            repo.removeImportantContact(phoneNumber)
+            uiState.value = uiState.value.copy(message = "Important contact removed!")
+        }
     }
 
     fun addCurrentLocationZone(mode: RingerMode) {
@@ -149,7 +136,6 @@ class SilentModeViewModel @Inject constructor(
                 uiState.value = uiState.value.copy(message = "Location Zone Added!")
             },
             onError = {
-                // Handle error (maybe expose an error state)
                 Log.e("SilentModeViewModel", "Could not get current location")
                 uiState.value = uiState.value.copy(message = "Error: Could not get location")
             }
@@ -157,23 +143,23 @@ class SilentModeViewModel @Inject constructor(
     }
 
     fun addLocationZone(latitude: Double, longitude: Double, name: String, mode: RingerMode) {
-        val zone = LocationZone(
-            id = java.util.UUID.randomUUID().toString(),
-            latitude = latitude,
-            longitude = longitude,
-            name = name,
-            radius = 100f,
-            mode = mode
-        )
-        repo.addLocationZone(zone)
-        refreshLocationZones()
+        viewModelScope.launch {
+            val zone = LocationZone(
+                id = java.util.UUID.randomUUID().toString(),
+                latitude = latitude,
+                longitude = longitude,
+                name = name,
+                radius = 100f,
+                mode = mode
+            )
+            repo.addLocationZone(zone)
+        }
     }
 
     fun removeLocationZone(id: String) {
-        repo.removeLocationZone(id)
-        refreshLocationZones()
-        setNormal()
-        // Optional: Update message specific to removal if setNormal doesn't cover it well enough
-        // setNormal already sets "Normal mode enabled"
+        viewModelScope.launch {
+            repo.removeLocationZone(id)
+            setNormal()
+        }
     }
 }
