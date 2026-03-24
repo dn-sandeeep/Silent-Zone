@@ -1,5 +1,6 @@
 package com.sandeep.silentzone.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -87,6 +88,12 @@ fun SilentScreen(
     onDeleteContact: (String) -> Unit
 ) {
     var selectedScreen by remember { mutableStateOf(0) } // 0 = Home, 1 = Zones, 2 = Contacts
+    
+    // Handle back button to redirect to Home screen if not already there
+    BackHandler(enabled = selectedScreen != 0) {
+        selectedScreen = 0
+    }
+    
     var showMapSelection by remember { mutableStateOf(false) }
     var showAddTypeDialog by remember { mutableStateOf(false) }
     var pendingSsid by remember { mutableStateOf<String?>(null) }
