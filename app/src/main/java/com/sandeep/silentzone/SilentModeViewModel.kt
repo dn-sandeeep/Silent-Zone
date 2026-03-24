@@ -132,7 +132,6 @@ class SilentModeViewModel @Inject constructor(
     fun removeLocationZone(id: String) {
         viewModelScope.launch {
             repo.removeLocationZone(id)
-            setNormal()
         }
     }
 }

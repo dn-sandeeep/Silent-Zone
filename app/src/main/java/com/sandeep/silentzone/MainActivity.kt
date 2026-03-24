@@ -221,9 +221,9 @@ class MainActivity : ComponentActivity() {
                             currentWifiSsid = currentWifiSsid,
                             locationZones = locationZones,
                             onAddLocationZone = { mode, radius -> vm.addCurrentLocationZone(mode, radius) },
-                            onMapZonesSelected = { zones, mode, radius ->
+                            onMapZonesSelected = { zones, mode ->
                                 zones.forEach { zone ->
-                                    vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode, radius)
+                                    vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode, zone.radius)
                                 }
                             },
                             onDeleteLocationZone = { id -> vm.removeLocationZone(id) },

@@ -79,7 +79,7 @@ fun SilentScreen(
     currentWifiSsid: String?,
     locationZones: List<LocationZone>,
     onAddLocationZone: (RingerMode, Float) -> Unit,
-    onMapZonesSelected: (List<MapZone>, RingerMode, Float) -> Unit,
+    onMapZonesSelected: (List<MapZone>, RingerMode) -> Unit,
     onDeleteLocationZone: (String) -> Unit,
     initialUserLocation: com.google.android.gms.maps.model.LatLng?,
     importantContacts: List<ImportantContact>,
@@ -101,8 +101,7 @@ fun SilentScreen(
         MapSelectionScreen(
             initialLocation = startLocation,
             onZonesSelected = { zones ->
-                radiusSource = RadiusSource.Map(zones)
-                showRadiusDialog = true
+                onMapZonesSelected(zones, RingerMode.SILENT)
                 showMapSelection = false
             },
             onCancel = { showMapSelection = false }
@@ -217,7 +216,6 @@ fun SilentScreen(
                 onRadiusSelected = { radius ->
                     when (val source = radiusSource) {
                         is RadiusSource.CurrentLocation -> onAddLocationZone(RingerMode.SILENT, radius)
-                        is RadiusSource.Map -> onMapZonesSelected(source.zones, RingerMode.SILENT, radius)
                         null -> {}
                     }
                     showRadiusDialog = false
@@ -259,7 +257,6 @@ fun SilentScreen(
 
 sealed class RadiusSource {
     object CurrentLocation : RadiusSource()
-    data class Map(val zones: List<MapZone>) : RadiusSource()
 }
 
 @Composable
