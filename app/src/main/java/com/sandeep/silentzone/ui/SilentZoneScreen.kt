@@ -344,17 +344,6 @@ fun DashboardScreen(
                     }
                 }
             }
-
-            // --- TEMPORARY CRASH TEST SECTION (REMOVE AFTER TESTING) ---
-            DashboardSectionHeader("Debug Tools")
-            OutlinedButton(
-                onClick = { throw RuntimeException("Firebase Crashlytics Test Crash") },
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
-            ) {
-                Text("🔥 Force Test Crash")
-            }
-            // -----------------------------------------------------------
         }
     }
 }
