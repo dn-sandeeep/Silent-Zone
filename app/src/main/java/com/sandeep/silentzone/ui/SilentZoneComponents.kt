@@ -310,49 +310,49 @@ fun ModeToggleCard(
     }
 }
 
-@Composable
-fun PermissionStatusCard(
-    wifiPermissionGranted: Boolean,
-    onRequestWifiPermission: () -> Unit
-) {
-    if (!wifiPermissionGranted) {
-        Card(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
-            ),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error)
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "WiFi Permission Required",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Text(
-                        "Grant location permission to scan WiFi networks",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
-                }
-                Button(
-                    onClick = onRequestWifiPermission,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Text("Grant", style = MaterialTheme.typography.labelMedium)
-                }
-            }
-        }
-    }
-}
+//@Composable
+//fun PermissionStatusCard(
+//    wifiPermissionGranted: Boolean,
+//    onRequestWifiPermission: () -> Unit
+//) {
+//    if (!wifiPermissionGranted) {
+//        Card(
+//            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+//            colors = CardDefaults.cardColors(
+//                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f)
+//            ),
+//            shape = RoundedCornerShape(16.dp)
+//        ) {
+//            Row(
+//                modifier = Modifier.padding(16.dp),
+//                verticalAlignment = Alignment.CenterVertically
+//            ) {
+//                Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error)
+//                Spacer(modifier = Modifier.width(12.dp))
+//                Column(modifier = Modifier.weight(1f)) {
+//                    Text(
+//                        "WiFi Permission Required",
+//                        style = MaterialTheme.typography.titleSmall,
+//                        fontWeight = FontWeight.Bold,
+//                        color = MaterialTheme.colorScheme.onErrorContainer
+//                    )
+//                    Text(
+//                        "Grant location permission to scan Wi-Fi networks",
+//                        style = MaterialTheme.typography.bodySmall,
+//                        color = MaterialTheme.colorScheme.onErrorContainer
+//                    )
+//                }
+//                Button(
+//                    onClick = onRequestWifiPermission,
+//                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+//                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 4.dp)
+//                ) {
+//                    Text("Grant", style = MaterialTheme.typography.labelMedium)
+//                }
+//            }
+//        }
+//    }
+//}
 
 @Composable
 fun PermissionWarningCard(onGrantAccess: () -> Unit) {

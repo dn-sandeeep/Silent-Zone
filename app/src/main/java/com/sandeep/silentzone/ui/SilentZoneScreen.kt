@@ -326,10 +326,10 @@ fun DashboardScreen(
 
             DashboardSectionHeader("Current Status")
             
-            PermissionStatusCard(
-                wifiPermissionGranted = wifiPermissionGranted,
-                onRequestWifiPermission = {}
-            )
+//            PermissionStatusCard(
+//                wifiPermissionGranted = wifiPermissionGranted,
+//                onRequestWifiPermission = {}
+//            )
             
             if (currentWifiSsid != null) {
                 Card(

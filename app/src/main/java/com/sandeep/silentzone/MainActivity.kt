@@ -64,7 +64,7 @@ class MainActivity : ComponentActivity() {
                     ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_PHONE_STATE)
 
             if (!shouldShowRationale) {
-                showSettingsDialog("Whitelist feature ke liye Contacts aur Call Log permissions zaroori hain. Please Settings mein jaakar inhe allow karein.")
+                showSettingsDialog("Contacts and Call Log permissions are required for the Whitelist feature. Please go to Settings and allow them.")
             } else {
                 Toast.makeText(this, "Whitelist feature requires all permissions to work.", Toast.LENGTH_LONG).show()
             }
@@ -314,7 +314,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
-        checkPermissionAndStartScan()
+        //checkPermissionAndStartScan()
     }
 
     private fun hasBackgroundPermission(): Boolean {
