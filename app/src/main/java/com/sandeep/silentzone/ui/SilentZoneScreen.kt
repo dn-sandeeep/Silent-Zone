@@ -86,7 +86,8 @@ fun SilentScreen(
     initialUserLocation: com.google.android.gms.maps.model.LatLng?,
     importantContacts: List<ImportantContact>,
     onPickContact: () -> Unit,
-    onDeleteContact: (String) -> Unit
+    onDeleteContact: (String) -> Unit,
+    onRequestPermission: (() -> Unit) -> Unit
 ) {
     var selectedScreen by remember { mutableStateOf(0) } // 0 = Home, 1 = Zones, 2 = Contacts
     
@@ -215,7 +216,8 @@ fun SilentScreen(
                 },
                 onSelectMap = { showMapSelection = true; showAddTypeDialog = false },
                 onWifi = { addZone(); showWifiSelection = true; showAddTypeDialog = false },
-                onDismiss = { showAddTypeDialog = false }
+                onDismiss = { showAddTypeDialog = false },
+                onRequestPermission = onRequestPermission
             )
         }
 
@@ -414,7 +416,8 @@ fun AddZoneTypeDialog(
     onCurrentLocation: () -> Unit,
     onSelectMap: () -> Unit,
     onWifi: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onRequestPermission: (() -> Unit) -> Unit
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -422,7 +425,7 @@ fun AddZoneTypeDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
-                    onClick = onCurrentLocation,
+                    onClick = { onRequestPermission { onCurrentLocation() } },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
@@ -432,7 +435,7 @@ fun AddZoneTypeDialog(
                     Text("Current Location", color = MaterialTheme.colorScheme.onBackground)
                 }
                 Button(
-                    onClick = onSelectMap,
+                    onClick = { onRequestPermission { onSelectMap() } },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
@@ -442,7 +445,7 @@ fun AddZoneTypeDialog(
                     Text("Select on Map", color = MaterialTheme.colorScheme.onBackground)
                 }
                 Button(
-                    onClick = onWifi,
+                    onClick = { onRequestPermission { onWifi() } },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)

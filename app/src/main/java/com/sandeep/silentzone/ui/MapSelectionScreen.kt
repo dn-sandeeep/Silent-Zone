@@ -80,8 +80,8 @@ fun MapSelectionScreen(
                 if (selectedZones.isNotEmpty()) {
                     ExtendedFloatingActionButton(
                         onClick = { onZonesSelected(selectedZones) },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = MaterialTheme.colorScheme.background,
+                        contentColor = MaterialTheme.colorScheme.onBackground,
                         modifier = Modifier.padding(bottom = 16.dp),
                         icon = { Icon(Icons.Default.Check, contentDescription = null) },
                         text = { Text("Confirm (${selectedZones.size})") }

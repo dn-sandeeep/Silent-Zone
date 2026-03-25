@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -58,8 +59,32 @@ class MainActivity : ComponentActivity() {
         if (contactsGranted && callLogGranted && phoneStateGranted) {
             openContactPicker()
         } else {
-            Toast.makeText(this, "Whitelist feature requires all permissions to work.", Toast.LENGTH_LONG).show()
+            val shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CONTACTS) ||
+                    ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CALL_LOG) ||
+                    ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_PHONE_STATE)
+
+            if (!shouldShowRationale) {
+                showSettingsDialog("Whitelist feature ke liye Contacts aur Call Log permissions zaroori hain. Please Settings mein jaakar inhe allow karein.")
+            } else {
+                Toast.makeText(this, "Whitelist feature requires all permissions to work.", Toast.LENGTH_LONG).show()
+            }
         }
+    }
+
+    private fun openAppSettings() {
+        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", packageName, null)
+        }
+        startActivity(intent)
+    }
+
+    private fun showSettingsDialog(message: String) {
+        android.app.AlertDialog.Builder(this)
+            .setTitle("Permission Required")
+            .setMessage(message)
+            .setPositiveButton("Settings") { _, _ -> openAppSettings() }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun openContactPicker() {
@@ -99,16 +124,58 @@ class MainActivity : ComponentActivity() {
         contactPermissionLauncher.launch(permissions)
     }
 
+    private var onPermissionGrantedAction: (() -> Unit)? = null
+
     private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { 
-            startWifiScan()
-            checkAndRequestBackgroundLocation()
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
+            if (results.all { it.value }) {
+                onPermissionGrantedAction?.invoke()
+                onPermissionGrantedAction = null
+            } else {
+                onPermissionGrantedAction = null
+                val permanentlyDenied = results.filter { !it.value }.keys.any {
+                    !ActivityCompat.shouldShowRequestPermissionRationale(this, it)
+                }
+                if (permanentlyDenied) {
+                    showSettingsDialog("To detect Location zones even when the app is closed, please select 'Allow all the time' in the system settings.\n\nGo to Settings -> Permissions -> Location -> Select 'Allow all the time'.")
+                } else {
+                    Toast.makeText(this, "Permissions are required for some features.", Toast.LENGTH_SHORT).show()
+                }
+            }
         }
+
+    private fun ensureLocationPermission(action: () -> Unit) {
+        val permissionsToRequest = mutableListOf<String>()
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.NEARBY_WIFI_DEVICES)
+            }
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+
+        if (permissionsToRequest.isNotEmpty()) {
+            onPermissionGrantedAction = action
+            requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+        } else {
+            action()
+        }
+    }
 
     private val backgroundLocationLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
             if (isGranted) {
                 Toast.makeText(this, "Background Location Granted!", Toast.LENGTH_SHORT).show()
+            } else {
+                if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
+                    showSettingsDialog("To detect Location zones even when the app is closed, please select 'Allow all the time' in the system settings.\n\nGo to Settings -> Permissions -> Location -> Select 'Allow all the time'.")
+                } else {
+                    Toast.makeText(this, "Background location is required for automation.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -208,7 +275,7 @@ class MainActivity : ComponentActivity() {
                             setSilent = vm::setSilent,
                             setVibrate = vm::setVibrate,
                             setNormal = vm::setNormal,
-                            addZone = { startWifiScan() },
+                            addZone = { ensureLocationPermission { startWifiScan() } },
                             availableSsidList = availableSsidList,
                             onSelectedSsid = { ssid, mode -> saveSsid(ssid, mode) },
                             onDismissDialog = { vm.clearSsidList() },
@@ -220,17 +287,28 @@ class MainActivity : ComponentActivity() {
                             wifiPermissionGranted = wifiPermissionGranted(),
                             currentWifiSsid = currentWifiSsid,
                             locationZones = locationZones,
-                            onAddLocationZone = { mode, radius -> vm.addCurrentLocationZone(mode, radius) },
+                            onAddLocationZone = { mode, radius -> 
+                                if (hasBackgroundPermission()) {
+                                    vm.addCurrentLocationZone(mode, radius)
+                                } else {
+                                    checkAndRequestBackgroundLocation()
+                                }
+                            },
                             onMapZonesSelected = { zones, mode ->
-                                zones.forEach { zone ->
-                                    vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode, zone.radius)
+                                if (hasBackgroundPermission()) {
+                                    zones.forEach { zone ->
+                                        vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode, zone.radius)
+                                    }
+                                } else {
+                                    checkAndRequestBackgroundLocation()
                                 }
                             },
                             onDeleteLocationZone = { id -> vm.removeLocationZone(id) },
                             initialUserLocation = currentLocation,
                             importantContacts = importantContacts,
                             onPickContact = { handleAddImportantContact() },
-                            onDeleteContact = { phoneNumber -> vm.removeImportantContact(phoneNumber) }
+                            onDeleteContact = { phoneNumber -> vm.removeImportantContact(phoneNumber) },
+                            onRequestPermission = { action -> ensureLocationPermission { action() } }
                         )
                     }
                 }
@@ -239,23 +317,16 @@ class MainActivity : ComponentActivity() {
         checkPermissionAndStartScan()
     }
 
-    private fun checkPermissionAndStartScan() {
-        val permissionsToRequest = mutableListOf<String>()
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.NEARBY_WIFI_DEVICES)
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-
-        if (permissionsToRequest.isNotEmpty()) {
-            requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+    private fun hasBackgroundPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
         } else {
+            true
+        }
+    }
+
+    private fun checkPermissionAndStartScan() {
+        ensureLocationPermission {
             startWifiScan()
             checkAndRequestBackgroundLocation()
         }
@@ -277,7 +348,7 @@ class MainActivity : ComponentActivity() {
     private fun showBackgroundLocationRationale() {
         android.app.AlertDialog.Builder(this)
             .setTitle("Background Location Required")
-            .setMessage("To use Location-based zones while the app is closed, please allow 'Allow all the time'.")
+            .setMessage("To detect Location zones even when the app is closed, please select 'Allow all the time' in the system settings.\n\nGo to Settings -> Permissions -> Location -> Select 'Allow all the time'.")
             .setPositiveButton("OK") { _, _ ->
                  try { backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) } catch (e: Exception) {}
             }
