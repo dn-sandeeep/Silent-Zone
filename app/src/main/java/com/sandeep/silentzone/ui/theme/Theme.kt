@@ -17,7 +17,12 @@ private val DarkColorScheme = darkColorScheme(
     surface = surface,
     onSurface = onSurface,
     surfaceVariant = surfaceVariant,
-    onSurfaceVariant = onSurfaceVariant
+    onSurfaceVariant = onSurfaceVariant,
+    primary = primary,
+    onPrimary = onPrimary,
+    secondary = secondary,
+    onSecondary = onSecondary,
+    tertiary = tertiary
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -27,6 +32,11 @@ private val LightColorScheme = lightColorScheme(
     onSurface = onSurface,
     surfaceVariant = surfaceVariant,
     onSurfaceVariant = onSurfaceVariant,
+    primary = primary,
+    onPrimary = onPrimary,
+    secondary = secondary,
+    onSecondary = onSecondary,
+    tertiary = tertiary
 
     /* Other default colors to override
     background = Color(0xFFFFFBFE),
@@ -43,7 +53,7 @@ private val LightColorScheme = lightColorScheme(
 fun SilentZoneTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

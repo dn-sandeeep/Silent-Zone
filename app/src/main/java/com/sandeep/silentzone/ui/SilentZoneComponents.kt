@@ -72,6 +72,7 @@ import androidx.compose.runtime.setValue
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
+import com.sandeep.silentzone.ui.theme.onBackground
 
 @Composable
 fun PulseStatusHeader(mode: RingerMode) {
@@ -109,9 +110,9 @@ fun PulseStatusHeader(mode: RingerMode) {
 
     val headerColor by animateColorAsState(
         targetValue = when (mode) {
-            RingerMode.SILENT -> Color(0xFF673AB7)
-            RingerMode.VIBRATE -> Color(0xFF009688)
-            RingerMode.NORMAL -> Color(0xFF2196F3)
+            RingerMode.SILENT -> MaterialTheme.colorScheme.tertiary
+            RingerMode.VIBRATE -> MaterialTheme.colorScheme.secondary
+            RingerMode.NORMAL -> MaterialTheme.colorScheme.primary
         },
         label = "headerColor"
     )
@@ -131,7 +132,7 @@ fun PulseStatusHeader(mode: RingerMode) {
             // Animated Pulse Rings
             Canvas(modifier = Modifier.size(200.dp)) {
                 drawCircle(
-                    color = Color.White,
+                    color = onBackground, // Using theme's onBackground
                     radius = (size.minDimension / 2) * pulseScale,
                     alpha = pulseAlpha,
                     style = Stroke(width = 4.dp.toPx())
@@ -148,8 +149,8 @@ fun PulseStatusHeader(mode: RingerMode) {
                         .size(100.dp)
                         .offset(y = floatingOffset.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f))
-                        .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape),
+                        .background(MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f))
+                        .border(1.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.3f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
 
@@ -161,7 +162,7 @@ fun PulseStatusHeader(mode: RingerMode) {
                         },
                         contentDescription = null,
                         modifier = Modifier.size(48.dp),
-                        tint = Color.White
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
 
@@ -175,7 +176,7 @@ fun PulseStatusHeader(mode: RingerMode) {
                     },
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onPrimary
                 )
                 
                 Text(
@@ -185,7 +186,7 @@ fun PulseStatusHeader(mode: RingerMode) {
                         RingerMode.NORMAL -> "Calls and notifications enabled"
                     },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.8f)
+                    color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
                 )
             }
         }
@@ -235,7 +236,7 @@ fun ImportantContactItemCard(contact: ImportantContact, onDelete: () -> Unit) {
                     Text(
                         text = contact.phoneNumber,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
             }
@@ -261,7 +262,7 @@ fun DashboardSectionHeader(title: String, modifier: Modifier = Modifier) {
         text = title,
         style = MaterialTheme.typography.titleSmall,
         fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.primary,
+        color = MaterialTheme.colorScheme.onBackground,
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 4.dp, vertical = 8.dp)
@@ -274,7 +275,7 @@ fun ModeToggleCard(
     icon: ImageVector,
     isActive: Boolean,
     onClick: () -> Unit,
-    activeColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.primary
+    activeColor: Color = MaterialTheme.colorScheme.primary
 ) {
     Card(
         modifier = Modifier
@@ -303,7 +304,7 @@ fun ModeToggleCard(
                 text = title,
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isActive) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -397,42 +398,42 @@ fun PermissionWarningCard(onGrantAccess: () -> Unit) {
     }
 }
 
-@Composable
-fun ManualControlCard(
-    title: String,
-    icon: ImageVector,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isActive: Boolean
-) {
-    Card(
-        modifier = modifier
-            .height(100.dp)
-            .clickable { onClick() },
-        colors = CardDefaults.cardColors(
-            containerColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-        ),
-        shape = RoundedCornerShape(16.dp)
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = title,
-                style = MaterialTheme.typography.labelLarge,
-                color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
+//@Composable
+//fun ManualControlCard(
+//    title: String,
+//    icon: ImageVector,
+//    onClick: () -> Unit,
+//    modifier: Modifier = Modifier,
+//    isActive: Boolean
+//) {
+//    Card(
+//        modifier = modifier
+//            .height(100.dp)
+//            .clickable { onClick() },
+//        colors = CardDefaults.cardColors(
+//            containerColor = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
+//        ),
+//        shape = RoundedCornerShape(16.dp)
+//    ) {
+//        Column(
+//            modifier = Modifier.fillMaxSize(),
+//            verticalArrangement = Arrangement.Center,
+//            horizontalAlignment = Alignment.CenterHorizontally
+//        ) {
+//            Icon(
+//                imageVector = icon,
+//                contentDescription = null,
+//                tint = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+//            )
+//            Spacer(modifier = Modifier.height(4.dp))
+//            Text(
+//                text = title,
+//                style = MaterialTheme.typography.labelLarge,
+//                color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+//            )
+//        }
+//    }
+//}
 
 @Composable
 fun SsidSelectionDialog(
@@ -444,9 +445,9 @@ fun SsidSelectionDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.Wifi, contentDescription = null, tint = MaterialTheme.colorScheme.onBackground)
                 Spacer(modifier = Modifier.width(12.dp))
-                Text("Select WiFi Network", fontWeight = FontWeight.Bold)
+                Text("Select Wi-Fi Network", fontWeight = FontWeight.Bold)
             }
         },
         text = {
@@ -472,7 +473,7 @@ fun SsidSelectionDialog(
                             Icons.Default.Wifi,
                             contentDescription = null,
                             modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.onBackground
                         )
                         Text(ssid, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                     }
@@ -489,10 +490,11 @@ fun SsidSelectionDialog(
         },
         confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", fontWeight = FontWeight.Bold)
+                Text("Cancel", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             }
         },
-        shape = RoundedCornerShape(28.dp)
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
@@ -559,52 +561,56 @@ fun ModeSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(text = "Add WiFi Zone", fontWeight = FontWeight.Bold) },
+        title = { Text(text = "Add Wi-Fi Zone", fontWeight = FontWeight.Bold) },
         text = {
             Column {
                 Text(
                     text = "When connected to '$ssid', switch to:",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 Button(
                     onClick = { onModeSelected(RingerMode.SILENT) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
                         Icons.Default.DoNotDisturbOn,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        tint = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Silent Mode", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold)
+                    Text("Silent Mode", color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
                 Button(
                     onClick = { onModeSelected(RingerMode.VIBRATE) },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Icon(
                         Icons.Default.Vibration,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer
+                        tint = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Vibrate Mode", color = MaterialTheme.colorScheme.onSecondaryContainer, fontWeight = FontWeight.Bold)
+                    Text("Vibrate Mode", color = MaterialTheme.colorScheme.onBackground, fontWeight = FontWeight.Bold)
                 }
             }
         },
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel", fontWeight = FontWeight.Bold)
+                Text("Cancel", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             }
         },
-        shape = RoundedCornerShape(28.dp)
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
@@ -622,7 +628,7 @@ fun RadiusSelectionDialog(
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
                     "Choose the size of your silent zone (radius in meters).",
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onBackground
                 )
                 Spacer(modifier = Modifier.height(24.dp))
                 
@@ -631,11 +637,11 @@ fun RadiusSelectionDialog(
                         "${radius.toInt()} meters",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
                 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 
                 Slider(
                     value = radius,
@@ -644,7 +650,7 @@ fun RadiusSelectionDialog(
                     steps = 18, // 50m intervals
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.background,
                         inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 )
@@ -653,25 +659,27 @@ fun RadiusSelectionDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("50m", style = MaterialTheme.typography.labelSmall)
-                    Text("1km", style = MaterialTheme.typography.labelSmall)
+                    Text("50m", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onBackground)
+                    Text("1km", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         },
         confirmButton = {
             Button(
                 onClick = { onRadiusSelected(radius) },
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
             ) {
-                Text("Select Radius")
+                Text("Select Radius", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             }
         },
-        shape = RoundedCornerShape(28.dp)
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
@@ -718,7 +726,7 @@ fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
                     Text(
                         text = "${zone.radius.toInt()}m radius • %.4f, %.4f".format(zone.latitude, zone.longitude),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                 }
             }

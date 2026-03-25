@@ -33,6 +33,7 @@ import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -129,7 +130,7 @@ fun SilentScreen(
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface
+                        titleContentColor = MaterialTheme.colorScheme.onBackground
                     )
                 )
             },
@@ -141,20 +142,20 @@ fun SilentScreen(
                     NavigationBarItem(
                         selected = selectedScreen == 0,
                         onClick = { selectedScreen = 0 },
-                        icon = { Icon(if (selectedScreen == 0) Icons.Default.Home else Icons.Default.Home, null) },
-                        label = { Text("Home") }
+                        icon = { Icon(if (selectedScreen == 0) Icons.Default.Home else Icons.Default.Home, null, tint = MaterialTheme.colorScheme.onBackground) },
+                        label = { Text("Home", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground) }
                     )
                     NavigationBarItem(
                         selected = selectedScreen == 1,
                         onClick = { selectedScreen = 1 },
-                        icon = { Icon(Icons.Default.Dashboard, null) },
-                        label = { Text("Zones") }
+                        icon = { Icon(Icons.Default.Dashboard, null, tint = MaterialTheme.colorScheme.onBackground) },
+                        label = { Text("Zones", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground) }
                     )
                     NavigationBarItem(
                         selected = selectedScreen == 2,
                         onClick = { selectedScreen = 2 },
-                        icon = { Icon(Icons.Default.Person, null) },
-                        label = { Text("Contacts") }
+                        icon = { Icon(Icons.Default.Person, null, tint = MaterialTheme.colorScheme.onBackground) },
+                        label = { Text("Contacts", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground) }
                     )
                 }
             },
@@ -164,8 +165,8 @@ fun SilentScreen(
                         onClick = {
                             if (selectedScreen == 1) showAddTypeDialog = true else onPickContact()
                         },
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onBackground,
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Add")
@@ -332,17 +333,28 @@ fun DashboardScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                     colors = androidx.compose.material3.CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.3f)
                     ),
                     shape = RoundedCornerShape(16.dp)
                 ) {
                     Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.onBackground)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text("Connected to: $currentWifiSsid", fontWeight = FontWeight.Bold)
+                        Text("Connected to: $currentWifiSsid", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                     }
                 }
             }
+
+            // --- TEMPORARY CRASH TEST SECTION (REMOVE AFTER TESTING) ---
+            DashboardSectionHeader("Debug Tools")
+            OutlinedButton(
+                onClick = { throw RuntimeException("Firebase Crashlytics Test Crash") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+            ) {
+                Text("🔥 Force Test Crash")
+            }
+            // -----------------------------------------------------------
         }
     }
 }
@@ -423,37 +435,42 @@ fun AddZoneTypeDialog(
                 Button(
                     onClick = onCurrentLocation,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
                 ) {
-                    Icon(Icons.Default.LocationOn, null)
+                    Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.onBackground)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Current Location")
+                    Text("Current Location", color = MaterialTheme.colorScheme.onBackground)
                 }
-                OutlinedButton(
+                Button(
                     onClick = onSelectMap,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
                 ) {
-                    Icon(Icons.Default.Map, null)
+                    Icon(Icons.Default.Map, null, tint = MaterialTheme.colorScheme.onBackground)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("Select on Map")
+                    Text("Select on Map", color = MaterialTheme.colorScheme.onBackground)
                 }
-                OutlinedButton(
+                Button(
                     onClick = onWifi,
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.background)
                 ) {
-                    Icon(Icons.Default.Wifi, null)
+                    Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.onBackground)
                     Spacer(modifier = Modifier.width(12.dp))
-                    Text("WiFi Network")
+                    Text("WiFi Network", color = MaterialTheme.colorScheme.onBackground)
                 }
             }
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel", fontWeight = FontWeight.Bold) }
+            TextButton(onClick = onDismiss) { Text("Cancel", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground) }
         },
-        shape = RoundedCornerShape(28.dp)
+        shape = RoundedCornerShape(28.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 8.dp
     )
 }
 
