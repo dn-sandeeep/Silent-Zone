@@ -1,56 +1,73 @@
 # SilentZone 🤫📱
 
-**SilentZone** is an intelligent Android automation application designed to seamlessly manage your phone's ringer modes (Silent, Vibrate, Normal) based on environmental context, location, and user activity. Built with modern Android development standards, it ensures your device stays quiet when it matters most and remains audible when you need it.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/dn-sandeeep/Silent-Zone/main/assets/silent_zone_app_icon_1775393820851.png" width="180" alt="SilentZone Icon">
+  <br>
+  <b>Intelligent Ringer Automation for a Quieter, Meticulous Life.</b>
+  <br>
+  <i>Built with Jetpack Compose, Material 3, and Google Play Services 🚀</i>
+</p>
 
 ---
 
-## 🚀 Key Features
+## 📺 Project Walkthrough & Demo
+> [!TIP]
+> **Experience SilentZone in Action!** Click the preview below to see how SilentZone seamlessly transitions between modes based on your environment.
 
-### 📶 Smart WiFi Automation
-- **Network-Aware Silencing**: Automatically switch to Silent or Vibrate mode when connecting to specific WiFi networks (e.g., Office, Library, University).
-- **Dynamic Restoration**: Automatically restores your previous ringer mode upon disconnecting from a designated "Silent WiFi."
+<p align="center">
+  <a href="YOUR_VIDEO_URL_HERE">
+    <img src="https://raw.githubusercontent.com/dn-sandeeep/Silent-Zone/main/assets/silent_zone_dashboard_mockup_1775393847082.png" width="800" alt="SilentZone Dashboard Mockup">
+  </a>
+  <br>
+  <i>(Replace with your screen recording or GIF)</i>
+</p>
 
-### 📍 Location-Based Geofencing
-- **Interactive Map Selection**: Define custom silent zones directly on an interactive Google Map.
-- **Background Triggering**: Uses the **Google Play Services Geofencing API** to trigger mode changes even when the app is closed or the device is in your pocket.
-- **Battery Optimized**: Leverages low-power location monitoring to ensure minimal impact on battery life.
+---
 
-### 📞 Whitelist & Call Bypass
-- **Important Contacts**: Mark specific contacts as "Important" to ensure their calls always ring, even if the device is in Silent mode.
-- **Real-Time Interception**: Uses a `BroadcastReceiver` to monitor incoming calls and intelligently bypass system silence for whitelisted numbers.
+## 🌟 Key Features (Detailed)
 
-### 📅 Meeting Mode (Calendar Integration)
-- **Contextual Awareness**: Automatically silences the phone if the user is currently in a "Busy" event on their Google Calendar.
-- **Auto-SMS (Optional)**: Can be configured to notify callers that you are currently in a meeting.
+### 📶 1. Smart WiFi Engine
+SilentZone doesn't just switch modes; it remembers.
+- **SSID Awareness**: Automatically switch to **Silent** or **Vibrate** mode when you connect to designated "Quiet Networks" (e.g., *University_5G*, *Office_Corp*).
+- **Intelligent Restoration**: Once you disconnect from a "Silent WiFi," the app restores your device to its **previous ringer state** (Normal, Vibrate, or Silent), ensuring you never miss a call after leaving a meeting.
+- **Low Impact**: Monitors `WIFI_STATE_CHANGED` broadcasts to minimize battery drain.
 
-### ✨ Premium Visual Experience
-- **Modern Dashboard**: A clean, Material 3-based interface with a bottom navigation system for easy access to Home, Zones, and Whitelist.
-- **Custom Pulse Animations**: A dynamic, pure Jetpack Compose-based header that uses pulse rings and floating icons to visually represent the active mode.
-- **Mode-Based Themes**: The UI dynamically changes its color palette (Purple for Silent, Teal for Vibrate, Blue for Normal) to reflect the device's state.
+### 📍 2. Proactive Geofencing
+Define physical zones where silence is mandatory.
+- **Interactive Map Selection**: Use the integrated Google Maps interface to drop pins and define radii (50m to 1km) for custom Silent Zones.
+- **Background Transitions**: Powered by the **Google Play Services Geofencing API**, SilentZone triggers mode changes even when the app is killed or the device is in your pocket.
+- **Fused Location Provider**: Leverages high-accuracy location data with optimized battery algorithms.
+
+### 📅 3. Meeting Mode (Context Engine)
+Your calendar is the master of your ringer.
+- **Calendar Observer**: Automatically silences the phone if your Google Calendar shows a "Busy" event.
+- **Smart SMS Auto-Reply**: Optionally send an automated text message to callers while you are in a meeting.
+- **Zero Configuration**: Once enabled, it works silently in the background, syncing with your primary calendar.
+
+### 📞 4. Emergency Whitelist (Dynamic Bypass)
+Never miss what truly matters.
+- **Priority Contacts**: Add family or emergency contacts to your "Important List."
+- **Call Interception**: Uses a `BroadcastReceiver` to monitor incoming `PHONE_STATE`. If a whitelisted number calls, SilentZone temporarily overrides system silence to let the call ring through.
+
+---
+
+## 🎨 Premium Visual Experience
+SilentZone isn't just functional; it's a delight to look at.
+- **Pulse Status Header**: A dynamic, pure Jetpack Compose-based dashboard that uses pulsing rings and floating icons to visually represent your active mode.
+- **Adaptive Theming**: The entire UI color palette shifts based on your state (Purple for Silent, Teal for Vibrate, Blue for Normal).
+- **Material 3 Design**: Fully compliant with modern Android design standards, featuring smooth transitions and haptic feedback.
 
 ---
 
 ## 🛠️ Tech Stack & Architecture
-
-SilentZone is built using the latest Android ecosystem tools and follows a clean, maintainable architecture.
-
-### **Core Stack**
-- **Language**: [Kotlin](https://kotlinlang.org/) (100%)
-- **UI Framework**: [Jetpack Compose](https://developer.android.com/jetpack/compose) with Material 3.
-- **Architecture**: **MVVM (Model-View-ViewModel)** for clear separation of concerns.
-- **Asynchronous Logic**: Kotlin Coroutines & StateFlow for reactive UI updates.
-
-### **Integrations & Libraries**
-- **Google Play Services**: Geofencing, Fused Location Provider, and Google Maps SDK.
-- **Maps Compose**: For modern, declarative Map integration in Compose.
-- **Gson**: For lightweight data serialization of user preferences and zones.
-- **Lottie**: For high-quality vector animations (used in auxiliary UI components).
-
-### **Architectural Components**
-- **ViewModel**: Manages UI state and business logic.
-- **Repository**: Acts as a single source of truth for data (WiFi SSIDs, Location Zones, Contacts).
-- **Broadcast Receivers**: Handle system events like `RINGER_MODE_CHANGED`, `WIFI_STATE_CHANGED`, and `PHONE_STATE`.
-- **Managers**: Specialized classes like `SilentZoneGeofenceManager` and `AgentActionManager` to handle specific hardware/API interactions.
+SilentZone follows a clean, maintainable architecture.
+- **Language**: Kotlin (100%)
+- **UI Framework**: Jetpack Compose (Material 3)
+- **Architecture**: MVVM with Clean Architecture principles.
+- **Integrations**: 
+    - **Google Play Services**: Geofencing, Fused Location, Maps.
+    - **Maps Compose**: For modern Map integration.
+    - **Coroutines & StateFlow**: For reactive state management.
 
 ---
 
@@ -69,28 +86,33 @@ SilentZone is built using the latest Android ecosystem tools and follows a clean
      ```
 
 3. **Build & Run**:
-   - Open the project in **Android Studio (Ladybug or newer)**.
-   - Sync Gradle and deploy to a physical device (Geofencing and WiFi scanning require a physical device for accurate testing).
+   - Open in **Android Studio (Ladybug or newer)**.
+   - Sync Gradle and deploy to a physical device (recommended for WiFi/Geofencing testing).
 
 ---
 
 ## 🛡️ Required Permissions
+SilentZone requires the following for its automation:
+- `ACCESS_FINE_LOCATION` & `ACCESS_BACKGROUND_LOCATION`: For Geofence triggers.
+- `NEARBY_WIFI_DEVICES`: To identify SSIDs on Android 13+.
+- `READ_CONTACTS` & `READ_PHONE_STATE`: For the Whitelist feature.
+- `READ_CALENDAR`: For Meeting Mode.
+- `ACCESS_NOTIFICATION_POLICY`: To manage Do Not Disturb modes.
 
-To provide its intelligent automation, SilentZone requires the following permissions:
-- `ACCESS_FINE_LOCATION` & `ACCESS_COARSE_LOCATION`: For defining and detecting Geofence zones.
-- `ACCESS_BACKGROUND_LOCATION`: Essential for location triggers to work when the app is not in the foreground.
-- `NEARBY_WIFI_DEVICES`: Required on Android 13+ to identify WiFi SSIDs without needing location access at all times.
-- `READ_CONTACTS`, `READ_PHONE_STATE`, `READ_CALL_LOG`: To enable the Whitelist/Important Contacts feature.
-- `READ_CALENDAR`: For the Meeting Mode/Calendar integration.
-- `ACCESS_NOTIFICATION_POLICY`: Required to programmatically change ringer modes (Do Not Disturb access).
+---
+
+## 🛡️ Privacy First
+**SilentZone processes all location, WiFi, and contact data offline on your device.** No personal data is ever uploaded to external servers.
 
 ---
 
 ## 🤝 Contributing
-Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
-
+Contributions are welcome!
 1. Fork the Project
 2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
 3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+---
+<p align="center">Made with ❤️ for a quieter world.</p>

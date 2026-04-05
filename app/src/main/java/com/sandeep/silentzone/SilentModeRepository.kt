@@ -8,6 +8,7 @@ import com.sandeep.silentzone.data.LocationZoneEntity
 import com.sandeep.silentzone.data.SilentZoneDao
 import com.sandeep.silentzone.data.WifiZoneEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -44,6 +45,13 @@ class SilentModeRepository @Inject constructor(
         appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private val notif: NotificationManager =
         appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    
+    private val _currentModeFlow = kotlinx.coroutines.flow.MutableStateFlow(getCurrentMode())
+    val currentModeFlow: kotlinx.coroutines.flow.StateFlow<RingerMode> = _currentModeFlow.asStateFlow()
+
+    fun refreshMode() {
+        _currentModeFlow.value = getCurrentMode()
+    }
     
     private val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(appContext)
     private val prefs = appContext.getSharedPreferences("silent_zone_prefs", Context.MODE_PRIVATE)
@@ -104,6 +112,7 @@ class SilentModeRepository @Inject constructor(
                 RingerMode.VIBRATE -> audio.ringerMode = AudioManager.RINGER_MODE_VIBRATE
                 RingerMode.NORMAL -> audio.ringerMode = AudioManager.RINGER_MODE_NORMAL
             }
+            refreshMode()
         } catch (e: Exception) {
             android.util.Log.e("SilentModeRepo", "Failed to apply mode $mode: ${e.message}")
         }
@@ -132,6 +141,7 @@ class SilentModeRepository @Inject constructor(
             val zone = zones.find { it.ssid == currentSsid }
             if (zone != null) {
                 if (activeWifiSsid != currentSsid) {
+                    saveOriginalMode()
                     prefs.edit().putString(PREF_KEY_ACTIVE_WIFI_SSID, currentSsid).apply()
                     applyMode(zone.mode)
                 }
@@ -153,6 +163,7 @@ class SilentModeRepository @Inject constructor(
         val activeLocationId = prefs.getString(PREF_KEY_ACTIVE_LOCATION_ID, null)
 
         if (isEntering) {
+            saveOriginalMode()
             prefs.edit().putString(PREF_KEY_ACTIVE_LOCATION_ID, id).apply()
             applyMode(zone.mode)
         } else if (activeLocationId == id) {
@@ -166,7 +177,11 @@ class SilentModeRepository @Inject constructor(
         val activeLoc = prefs.getString(PREF_KEY_ACTIVE_LOCATION_ID, null)
 
         if (activeWifi == null && activeLoc == null) {
-            applyMode(RingerMode.NORMAL)
+            restoreOriginalMode()
+            // If still no mode applied (e.g. no original mode saved), default to NORMAL
+            if (getCurrentMode() != RingerMode.NORMAL && prefs.getInt(PREF_KEY_SAVED_MODE, -1) == -1) {
+                applyMode(RingerMode.NORMAL)
+            }
         } else {
             // Still in another zone, re-apply that zone's mode
             if (activeWifi != null) {

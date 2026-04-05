@@ -34,6 +34,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.sandeep.silentzone.ui.SilentScreen
 import com.sandeep.silentzone.ui.theme.SilentZoneTheme
+import com.sandeep.silentzone.utils.PermissionManager
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -41,6 +42,8 @@ class MainActivity : ComponentActivity() {
     private val vm: SilentModeViewModel by viewModels()
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private var currentLocation: com.google.android.gms.maps.model.LatLng? by mutableStateOf(null)
+
+    private lateinit var permissionManager: PermissionManager
 
     private val pickContactLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
@@ -51,40 +54,92 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private val contactPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { permissions ->
-        val contactsGranted = permissions[Manifest.permission.READ_CONTACTS] ?: (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED)
-        val callLogGranted = permissions[Manifest.permission.READ_CALL_LOG] ?: (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED)
-        val phoneStateGranted = permissions[Manifest.permission.READ_PHONE_STATE] ?: (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED)
-
-        if (contactsGranted && callLogGranted && phoneStateGranted) {
-            openContactPicker()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        
+        permissionManager = PermissionManager(this)
+        
+        // Start the background service
+        val serviceIntent = Intent(this, SilentZoneService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent)
         } else {
-            val shouldShowRationale = ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CONTACTS) ||
-                    ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_CALL_LOG) ||
-                    ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.READ_PHONE_STATE)
+            startService(serviceIntent)
+        }
 
-            if (!shouldShowRationale) {
-                showSettingsDialog("Contacts and Call Log permissions are required for the Whitelist feature. Please go to Settings and allow them.")
-            } else {
-                Toast.makeText(this, "Whitelist feature requires all permissions to work.", Toast.LENGTH_LONG).show()
+        enableEdgeToEdge()
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        fetchCurrentLocation()
+
+        setContent {
+            SilentZoneTheme {
+                MaterialTheme {
+                    Surface(Modifier.fillMaxSize()) {
+                        val state = vm.uiStateFlow.collectAsStateWithLifecycle().value
+                        val availableSsidList = vm.availableSsidList.collectAsStateWithLifecycle().value
+                        val wifiZones = vm.wifiZones.collectAsStateWithLifecycle().value
+                        val locationZones = vm.locationZones.collectAsStateWithLifecycle().value
+                        val importantContacts = vm.importantContacts.collectAsStateWithLifecycle().value
+                        val currentWifiSsid = getCurrentSsid()
+
+                        val silentSsids = wifiZones.filter { it.mode == RingerMode.SILENT }.map { it.ssid }.toSet()
+                        val vibrateSsids = wifiZones.filter { it.mode == RingerMode.VIBRATE }.map { it.ssid }.toSet()
+
+                        SilentScreen(
+                            accessGranted = state.accessGranted,
+                            mode = state.currentMode,
+                            message = state.message,
+                            onGrantAccess = {
+                                startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
+                            },
+                            setSilent = vm::setSilent,
+                            setVibrate = vm::setVibrate,
+                            setNormal = vm::setNormal,
+                            addZone = { permissionManager.ensureLocationPermission { startWifiScan() } },
+                            availableSsidList = availableSsidList,
+                            onSelectedSsid = { ssid, mode -> saveSsid(ssid, mode) },
+                            onDismissDialog = { vm.clearSsidList() },
+                            silentSsids = silentSsids,
+                            vibrateSsids = vibrateSsids,
+                            onDeleteSsid = { ssid ->
+                                vm.removeWifiZone(ssid)
+                            },
+                            wifiPermissionGranted = permissionManager.wifiPermissionGranted(),
+                            currentWifiSsid = currentWifiSsid,
+                            locationZones = locationZones,
+                            onAddLocationZone = { mode, radius -> 
+                                if (permissionManager.hasBackgroundPermission()) {
+                                    vm.addCurrentLocationZone(mode, radius)
+                                } else {
+                                    permissionManager.checkAndRequestBackgroundLocation()
+                                }
+                            },
+                            onMapZonesSelected = { zones, mode ->
+                                if (permissionManager.hasBackgroundPermission()) {
+                                    zones.forEach { zone ->
+                                        vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode, zone.radius)
+                                    }
+                                } else {
+                                    permissionManager.checkAndRequestBackgroundLocation()
+                                }
+                            },
+                            onDeleteLocationZone = { id -> vm.removeLocationZone(id) },
+                            initialUserLocation = currentLocation,
+                            importantContacts = importantContacts,
+                            onPickContact = { handleAddImportantContact() },
+                            onDeleteContact = { phoneNumber -> vm.removeImportantContact(phoneNumber) },
+                            onRequestPermission = { action -> permissionManager.ensureLocationPermission { action() } }
+                        )
+                    }
+                }
             }
         }
     }
 
-    private fun openAppSettings() {
-        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-            data = Uri.fromParts("package", packageName, null)
+    private fun handleAddImportantContact() {
+        permissionManager.ensureLocationPermission {
+            openContactPicker()
         }
-        startActivity(intent)
-    }
-
-    private fun showSettingsDialog(message: String) {
-        android.app.AlertDialog.Builder(this)
-            .setTitle("Permission Required")
-            .setMessage(message)
-            .setPositiveButton("Settings") { _, _ -> openAppSettings() }
-            .setNegativeButton("Cancel", null)
-            .show()
     }
 
     private fun openContactPicker() {
@@ -113,247 +168,6 @@ class MainActivity : ComponentActivity() {
         } catch (e: Exception) {
             Log.e("MainActivity", "Error reading contact data: ${e.message}")
         }
-    }
-
-    private fun handleAddImportantContact() {
-        val permissions = arrayOf(
-            Manifest.permission.READ_CONTACTS,
-            Manifest.permission.READ_CALL_LOG,
-            Manifest.permission.READ_PHONE_STATE
-        )
-        contactPermissionLauncher.launch(permissions)
-    }
-
-    private var onPermissionGrantedAction: (() -> Unit)? = null
-
-    private val requestPermissionLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { results ->
-            if (results.all { it.value }) {
-                onPermissionGrantedAction?.invoke()
-                onPermissionGrantedAction = null
-            } else {
-                onPermissionGrantedAction = null
-                val permanentlyDenied = results.filter { !it.value }.keys.any {
-                    !ActivityCompat.shouldShowRequestPermissionRationale(this, it)
-                }
-                if (permanentlyDenied) {
-                    showSettingsDialog("To detect Location zones even when the app is closed, please select 'Allow all the time' in the system settings.\n\nGo to Settings -> Permissions -> Location -> Select 'Allow all the time'.")
-                } else {
-                    Toast.makeText(this, "Permissions are required for some features.", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-    private fun ensureLocationPermission(action: () -> Unit) {
-        val permissionsToRequest = mutableListOf<String>()
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.NEARBY_WIFI_DEVICES)
-            }
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                permissionsToRequest.add(Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-
-        if (permissionsToRequest.isNotEmpty()) {
-            onPermissionGrantedAction = action
-            requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
-        } else {
-            action()
-        }
-    }
-
-    private val backgroundLocationLauncher =
-        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
-            if (isGranted) {
-                Toast.makeText(this, "Background Location Granted!", Toast.LENGTH_SHORT).show()
-            } else {
-                if (!ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
-                    showSettingsDialog("To detect Location zones even when the app is closed, please select 'Allow all the time' in the system settings.\n\nGo to Settings -> Permissions -> Location -> Select 'Allow all the time'.")
-                } else {
-                    Toast.makeText(this, "Background location is required for automation.", Toast.LENGTH_SHORT).show()
-                }
-            }
-        }
-
-    private val wifiScanReceiver = object : BroadcastReceiver() {
-        @SuppressLint("MissingPermission")
-        override fun onReceive(context: Context?, intent: Intent?) {
-            val success = intent?.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, false) ?: false
-            if (success) {
-                try {
-                    val wifiManager = context?.applicationContext?.getSystemService(Context.WIFI_SERVICE) as? WifiManager
-                    wifiManager?.let {
-                        val ssidList = it.scanResults.map { res -> res.SSID }.filter { ssid ->
-                            ssid.isNotBlank() && ssid != "unknown ssid" && ssid.length < 32
-                        }.distinct()
-                        if (ssidList.isNotEmpty()) vm.updateSsidList(ssidList)
-                    }
-                } catch (e: Exception) {}
-            }
-        }
-    }
-
-    private val ringerModeReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == android.media.AudioManager.RINGER_MODE_CHANGED_ACTION) {
-                vm.refresh()
-            }
-        }
-    }
-
-    private val networkCallback = object : android.net.ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: android.net.Network) {
-            runOnUiThread {
-                vm.checkWifiConnection(getCurrentSsid())
-            }
-        }
-        override fun onLost(network: android.net.Network) {
-            runOnUiThread {
-                vm.checkWifiConnection(null)
-            }
-        }
-    }
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        
-        // Start the background service
-        val serviceIntent = Intent(this, SilentZoneService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
-
-        enableEdgeToEdge()
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
-        fetchCurrentLocation()
-
-        val scanFilter = IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(wifiScanReceiver, scanFilter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            registerReceiver(wifiScanReceiver, scanFilter)
-        }
-        registerReceiver(ringerModeReceiver, IntentFilter(android.media.AudioManager.RINGER_MODE_CHANGED_ACTION))
-
-        try {
-            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            val networkRequest = android.net.NetworkRequest.Builder()
-                .addTransportType(android.net.NetworkCapabilities.TRANSPORT_WIFI)
-                .build()
-            connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
-        } catch (e: Exception) {
-            Log.e("MainActivity", "Failed to register network callback: ${e.message}")
-        }
-
-        setContent {
-            SilentZoneTheme {
-                MaterialTheme {
-                    Surface(Modifier.fillMaxSize()) {
-                        val state = vm.uiStateFlow.collectAsStateWithLifecycle().value
-                        val availableSsidList = vm.availableSsidList.collectAsStateWithLifecycle().value
-                        val wifiZones = vm.wifiZones.collectAsStateWithLifecycle().value
-                        val locationZones = vm.locationZones.collectAsStateWithLifecycle().value
-                        val importantContacts = vm.importantContacts.collectAsStateWithLifecycle().value
-                        val currentWifiSsid = getCurrentSsid()
-
-                        val silentSsids = wifiZones.filter { it.mode == RingerMode.SILENT }.map { it.ssid }.toSet()
-                        val vibrateSsids = wifiZones.filter { it.mode == RingerMode.VIBRATE }.map { it.ssid }.toSet()
-
-                        SilentScreen(
-                            accessGranted = state.accessGranted,
-                            mode = state.currentMode,
-                            message = state.message,
-                            onGrantAccess = {
-                                startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-                            },
-                            setSilent = vm::setSilent,
-                            setVibrate = vm::setVibrate,
-                            setNormal = vm::setNormal,
-                            addZone = { ensureLocationPermission { startWifiScan() } },
-                            availableSsidList = availableSsidList,
-                            onSelectedSsid = { ssid, mode -> saveSsid(ssid, mode) },
-                            onDismissDialog = { vm.clearSsidList() },
-                            silentSsids = silentSsids,
-                            vibrateSsids = vibrateSsids,
-                            onDeleteSsid = { ssid ->
-                                vm.removeWifiZone(ssid)
-                            },
-                            wifiPermissionGranted = wifiPermissionGranted(),
-                            currentWifiSsid = currentWifiSsid,
-                            locationZones = locationZones,
-                            onAddLocationZone = { mode, radius -> 
-                                if (hasBackgroundPermission()) {
-                                    vm.addCurrentLocationZone(mode, radius)
-                                } else {
-                                    checkAndRequestBackgroundLocation()
-                                }
-                            },
-                            onMapZonesSelected = { zones, mode ->
-                                if (hasBackgroundPermission()) {
-                                    zones.forEach { zone ->
-                                        vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode, zone.radius)
-                                    }
-                                } else {
-                                    checkAndRequestBackgroundLocation()
-                                }
-                            },
-                            onDeleteLocationZone = { id -> vm.removeLocationZone(id) },
-                            initialUserLocation = currentLocation,
-                            importantContacts = importantContacts,
-                            onPickContact = { handleAddImportantContact() },
-                            onDeleteContact = { phoneNumber -> vm.removeImportantContact(phoneNumber) },
-                            onRequestPermission = { action -> ensureLocationPermission { action() } }
-                        )
-                    }
-                }
-            }
-        }
-        //checkPermissionAndStartScan()
-    }
-
-    private fun hasBackgroundPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-        } else {
-            true
-        }
-    }
-
-    private fun checkPermissionAndStartScan() {
-        ensureLocationPermission {
-            startWifiScan()
-            checkAndRequestBackgroundLocation()
-        }
-    }
-
-    private fun checkAndRequestBackgroundLocation() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            val hasBackground = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-            if (!hasBackground) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    showBackgroundLocationRationale()
-                } else {
-                     backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                }
-            }
-        }
-    }
-
-    private fun showBackgroundLocationRationale() {
-        android.app.AlertDialog.Builder(this)
-            .setTitle("Background Location Required")
-            .setMessage("To detect Location zones even when the app is closed, please select 'Allow all the time' in the system settings.\n\nGo to Settings -> Permissions -> Location -> Select 'Allow all the time'.")
-            .setPositiveButton("OK") { _, _ ->
-                 try { backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) } catch (e: Exception) {}
-            }
-            .setNegativeButton("No Thanks") { dialog, _ -> dialog.dismiss() }
-            .show()
     }
 
     @SuppressLint("MissingPermission")
@@ -386,29 +200,10 @@ class MainActivity : ComponentActivity() {
         vm.refresh()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        try { unregisterReceiver(wifiScanReceiver) } catch (e: Exception) {}
-        try { unregisterReceiver(ringerModeReceiver) } catch (e: Exception) {}
-        try {
-            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            connectivityManager.unregisterNetworkCallback(networkCallback)
-        } catch (e: Exception) {}
-    }
-
-    private fun wifiPermissionGranted(): Boolean {
-        val fine = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
-        if (!fine) return false
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            return ContextCompat.checkSelfPermission(this, Manifest.permission.NEARBY_WIFI_DEVICES) == PackageManager.PERMISSION_GRANTED
-        }
-        return true
-    }
-
     @SuppressLint("MissingPermission")
     private fun getCurrentSsid(): String? {
         try {
-            if (!wifiPermissionGranted()) return null
+            if (!permissionManager.wifiPermissionGranted()) return null
             val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             val info = wifiManager.connectionInfo
             return if (info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) info.ssid.trim('"') else null

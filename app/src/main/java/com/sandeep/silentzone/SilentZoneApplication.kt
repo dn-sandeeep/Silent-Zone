@@ -1,10 +1,11 @@
 package com.sandeep.silentzone
 
 import android.app.Application
-import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
+import androidx.hilt.work.HiltWorkerFactory
 import com.microsoft.clarity.Clarity
 import com.microsoft.clarity.ClarityConfig
+import com.microsoft.clarity.models.LogLevel
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -16,13 +17,16 @@ class SilentZoneApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        
-        // Initialize Microsoft Clarity securely
-        val projectId = BuildConfig.CLARITY_PROJECT_ID
-        if (projectId.isNotEmpty()) {
-            val config = ClarityConfig(projectId)
-            Clarity.initialize(this, config)
-        }
+
+        // Microsoft Clarity Initialization
+        val config = ClarityConfig(
+            projectId = BuildConfig.CLARITY_PROJECT_ID,
+            logLevel = LogLevel.Info,
+        )
+        Clarity.initialize(applicationContext, config)
+        //Clarity.setCurrentMaskingLevel(MaskingLevel.Relaxed)
+
+
     }
 
     override val workManagerConfiguration: Configuration

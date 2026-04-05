@@ -20,9 +20,6 @@ class CallReceiver : BroadcastReceiver() {
     lateinit var repo: SilentModeRepository
     
     @Inject
-    lateinit var actionManager: AgentActionManager
-    
-    @Inject
     lateinit var contextEngine: AgentContextEngine
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -30,6 +27,8 @@ class CallReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == TelephonyManager.ACTION_PHONE_STATE_CHANGED) {
             val state = intent.getStringExtra(TelephonyManager.EXTRA_STATE)
+            // Note: EXTRA_INCOMING_NUMBER requires READ_CALL_LOG permission on modern Android.
+            // Without it, incomingNumber will likely be null.
             val incomingNumber = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER)
             
             val pendingResult = goAsync()
@@ -39,7 +38,7 @@ class CallReceiver : BroadcastReceiver() {
                         TelephonyManager.EXTRA_STATE_RINGING -> {
                             handleRinging(context, incomingNumber)
                         }
-                        TelephonyManager.EXTRA_STATE_IDLE -> {
+                         TelephonyManager.EXTRA_STATE_IDLE -> {
                             restoreMode(context)
                         }
                     }
@@ -58,7 +57,7 @@ class CallReceiver : BroadcastReceiver() {
         if (!incomingNumber.isNullOrEmpty() && repo.isImportantContact(incomingNumber)) {
             Log.d(TAG, "Important contact calling: $incomingNumber. Bypassing silent mode.")
             saveCurrentMode(context, repo.getCurrentMode())
-            actionManager.normalPhone()
+            repo.setNormal()
             return
         }
 
@@ -66,11 +65,7 @@ class CallReceiver : BroadcastReceiver() {
         if (contextEngine.isUserInMeeting()) {
             Log.d(TAG, "User in meeting. Silencing call.")
             saveCurrentMode(context, repo.getCurrentMode())
-            actionManager.silencePhone()
-            
-            if (!incomingNumber.isNullOrEmpty()) {
-                actionManager.sendMeetingSms(incomingNumber)
-            }
+            repo.setSilent()
         }
     }
 
@@ -82,9 +77,9 @@ class CallReceiver : BroadcastReceiver() {
             val savedMode = RingerMode.values()[savedModeOrdinal]
             Log.d(TAG, "Restoring mode to: $savedMode")
             when (savedMode) {
-                RingerMode.SILENT -> actionManager.silencePhone()
-                RingerMode.VIBRATE -> actionManager.vibratePhone()
-                RingerMode.NORMAL -> actionManager.normalPhone()
+                RingerMode.SILENT -> repo.setSilent()
+                RingerMode.VIBRATE -> repo.setVibrate()
+                RingerMode.NORMAL -> repo.setNormal()
             }
             // Clear the saved mode
             prefs.edit().remove(PREF_KEY_SAVED_MODE).apply()

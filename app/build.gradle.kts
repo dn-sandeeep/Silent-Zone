@@ -13,12 +13,12 @@ plugins {
 
 android {
     namespace = "com.sandeep.silentzone"
-    compileSdk = 36
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.sandeep.silentzone"
         minSdk = 24
-        targetSdk = 36
+        targetSdk = 35
         versionCode = 3
         versionName = "0.0.1"
 
@@ -87,15 +87,19 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.androidx.compose.foundation)
-    implementation(libs.microsoft.clarity)
+    //implementation(libs.microsoft.clarity)
 
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
 
+// Microsoft Clarity
+    implementation(libs.clarity)
+
     // Hilt
     implementation(libs.hilt.android)
+    implementation(libs.androidx.compose.runtime)
     ksp(libs.hilt.compiler)
     implementation(libs.hilt.navigation.compose)
 

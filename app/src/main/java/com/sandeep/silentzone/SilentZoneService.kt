@@ -6,8 +6,11 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.media.AudioManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
@@ -42,11 +45,20 @@ class SilentZoneService : Service() {
         }
     }
 
+    private val ringerModeReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AudioManager.RINGER_MODE_CHANGED_ACTION) {
+                repository.refreshMode()
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         registerNetworkCallback()
+        registerReceiver(ringerModeReceiver, IntentFilter(AudioManager.RINGER_MODE_CHANGED_ACTION))
     }
 
     private fun registerNetworkCallback() {
@@ -67,11 +79,19 @@ class SilentZoneService : Service() {
     private fun getCurrentSsid(): String? {
         return try {
             val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            val info = wifiManager.connectionInfo
-            if (info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) {
-                info.ssid.trim('"')
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val network = connectivityManager.activeNetwork
+                val capabilities = connectivityManager.getNetworkCapabilities(network)
+                val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
+                wifiInfo?.ssid?.trim('"')?.takeIf { it != WifiManager.UNKNOWN_SSID }
             } else {
-                null
+                @Suppress("DEPRECATION")
+                val info = wifiManager.connectionInfo
+                if (info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) {
+                    info.ssid.trim('"')
+                } else {
+                    null
+                }
             }
         } catch (e: Exception) {
             null
@@ -104,6 +124,9 @@ class SilentZoneService : Service() {
         super.onDestroy()
         try {
             connectivityManager.unregisterNetworkCallback(networkCallback)
+        } catch (e: Exception) {}
+        try {
+            unregisterReceiver(ringerModeReceiver)
         } catch (e: Exception) {}
     }
 

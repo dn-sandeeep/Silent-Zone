@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -22,23 +23,28 @@ class SilentModeViewModel @Inject constructor(
         _availableSsidList.value = emptyList()
     }
 
-    private val uiState = MutableStateFlow(
+    private val _message = MutableStateFlow<String?>(null)
+
+    val uiStateFlow: StateFlow<UiState> = combine(
+        repo.currentModeFlow,
+        _message
+    ) { mode, msg ->
         UiState(
             accessGranted = repo.hasPolicyAccess(),
-            currentMode = repo.getCurrentMode(),
-              null
-        ))
-    val uiStateFlow: StateFlow<UiState> = uiState.asStateFlow()
-    fun refresh() {
-        uiState.value = uiState.value.copy(
-            accessGranted = repo.hasPolicyAccess(),
-            currentMode = repo.getCurrentMode()
+            currentMode = mode,
+            message = msg
         )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState(repo.hasPolicyAccess(), repo.getCurrentMode(), null))
+
+    fun refresh() {
+        repo.refreshMode()
     }
     fun setSilent() {
         viewModelScope.launch {
-            val mode = repo.setSilent()
-            uiState.value = uiState.value.copy(currentMode = mode, message = "Silent mode enabled")
+            repo.setSilent()
+            _message.value = "Silent mode enabled"
+            delay(2000)
+            _message.value = null
         }
     }
 
@@ -65,15 +71,19 @@ class SilentModeViewModel @Inject constructor(
 
     fun setVibrate() {
         viewModelScope.launch {
-            val mode = repo.setVibrate()
-            uiState.value = uiState.value.copy(currentMode = mode, message = "Vibrate mode enabled")
+            repo.setVibrate()
+            _message.value = "Vibrate mode enabled"
+            delay(2000)
+            _message.value = null
         }
     }
 
     fun setNormal() {
         viewModelScope.launch {
-            val mode = repo.setNormal()
-            uiState.value = uiState.value.copy(currentMode = mode, message = "Normal mode enabled")
+            repo.setNormal()
+            _message.value = "Normal mode enabled"
+            delay(2000)
+            _message.value = null
         }
     }
 
@@ -91,14 +101,18 @@ class SilentModeViewModel @Inject constructor(
                 phoneNumber = phoneNumber
             )
             repo.addImportantContact(contact)
-            uiState.value = uiState.value.copy(message = "Important contact added!")
+            _message.value = "Important contact added!"
+            delay(2000)
+            _message.value = null
         }
     }
 
     fun removeImportantContact(phoneNumber: String) {
         viewModelScope.launch {
             repo.removeImportantContact(phoneNumber)
-            uiState.value = uiState.value.copy(message = "Important contact removed!")
+            _message.value = "Important contact removed!"
+            delay(2000)
+            _message.value = null
         }
     }
 
@@ -106,11 +120,19 @@ class SilentModeViewModel @Inject constructor(
         repo.getCurrentLocation(
             onLocationResult = { lat, lon ->
                 addLocationZone(lat, lon, "Zone ${locationZones.value.size + 1}", mode, radius)
-                uiState.value = uiState.value.copy(message = "Location Zone Added!")
+                _message.value = "Location Zone Added!"
+                viewModelScope.launch {
+                    delay(2000)
+                    _message.value = null
+                }
             },
             onError = {
                 Log.e("SilentModeViewModel", "Could not get current location")
-                uiState.value = uiState.value.copy(message = "Error: Could not get location")
+                _message.value = "Error: Could not get location"
+                viewModelScope.launch {
+                    delay(2000)
+                    _message.value = null
+                }
             }
         )
     }
