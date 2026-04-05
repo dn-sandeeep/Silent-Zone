@@ -202,13 +202,31 @@ class MainActivity : ComponentActivity() {
     }
 
     @SuppressLint("MissingPermission")
-    private fun getCurrentSsid(): String? {
-        try {
+    private fun getCurrentSsid(network: android.net.Network? = null): String? {
+        return try {
             if (!permissionManager.wifiPermissionGranted()) return null
-            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            
+            // Priority 1: Legacy
+            @Suppress("DEPRECATION")
             val info = wifiManager.connectionInfo
-            return if (info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) info.ssid.trim('"') else null
-        } catch (e: Exception) { return null }
+            if (info != null && info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) {
+                return info.ssid.trim('"')
+            }
+            
+            // Priority 2: Modern
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val targetNetwork = network ?: connectivityManager.activeNetwork
+            val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
+            val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
+            if (wifiInfo != null && wifiInfo.ssid != null && wifiInfo.ssid != WifiManager.UNKNOWN_SSID) {
+                return wifiInfo.ssid.trim('"')
+            }
+            
+            null
+        } catch (e: Exception) {
+            null
+        }
     }
 
     private fun saveSsid(ssid: String?, mode: RingerMode) {

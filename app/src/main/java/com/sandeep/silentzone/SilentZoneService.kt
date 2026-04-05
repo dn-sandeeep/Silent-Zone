@@ -37,11 +37,15 @@ class SilentZoneService : Service() {
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            checkWifiAndApplyMode()
+            checkWifiAndApplyMode(network)
+        }
+
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            checkWifiAndApplyMode(network)
         }
 
         override fun onLost(network: Network) {
-            checkWifiAndApplyMode()
+            checkWifiAndApplyMode(null)
         }
     }
 
@@ -68,31 +72,36 @@ class SilentZoneService : Service() {
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
     }
 
-    private fun checkWifiAndApplyMode() {
+    private fun checkWifiAndApplyMode(network: Network?) {
         serviceScope.launch {
-            val ssid = getCurrentSsid()
+            // Delay to allow network info to settle
+            if (network != null) kotlinx.coroutines.delay(1000)
+            val ssid = getCurrentSsid(network)
             repository.onWifiChanged(ssid)
         }
     }
 
     @SuppressLint("MissingPermission")
-    private fun getCurrentSsid(): String? {
+    private fun getCurrentSsid(network: Network? = null): String? {
         return try {
             val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                val network = connectivityManager.activeNetwork
-                val capabilities = connectivityManager.getNetworkCapabilities(network)
-                val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
-                wifiInfo?.ssid?.trim('"')?.takeIf { it != WifiManager.UNKNOWN_SSID }
-            } else {
-                @Suppress("DEPRECATION")
-                val info = wifiManager.connectionInfo
-                if (info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) {
-                    info.ssid.trim('"')
-                } else {
-                    null
-                }
+            
+            // Priority 1: Legacy API (often more reliable for SSID even on modern Android)
+            @Suppress("DEPRECATION")
+            val info = wifiManager.connectionInfo
+            if (info != null && info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) {
+                return info.ssid.trim('"')
             }
+            
+            // Priority 2: Modern API (NetworkCapabilities)
+            val targetNetwork = network ?: connectivityManager.activeNetwork
+            val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
+            val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
+            if (wifiInfo != null && wifiInfo.ssid != null && wifiInfo.ssid != WifiManager.UNKNOWN_SSID) {
+                return wifiInfo.ssid.trim('"')
+            }
+            
+            null
         } catch (e: Exception) {
             null
         }
