@@ -26,7 +26,6 @@ class SilentZoneApplication : Application(), Configuration.Provider {
         Clarity.initialize(applicationContext, config)
         //Clarity.setCurrentMaskingLevel(MaskingLevel.Relaxed)
 
-
     }
 
     override val workManagerConfiguration: Configuration
