@@ -33,11 +33,18 @@ fun GlassCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val isDark = isSystemInDarkTheme()
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .border(1.dp, GlassBorder, RoundedCornerShape(24.dp)),
-        colors = CardDefaults.cardColors(containerColor = GlassWhite),
+            .border(
+                1.dp, 
+                MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), 
+                RoundedCornerShape(24.dp)
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = if (isDark) 0.7f else 0.9f)
+        ),
         shape = RoundedCornerShape(24.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -80,16 +87,16 @@ fun PulseStatusHeader(mode: RingerMode, isFallback: Boolean = false) {
     )
 
     val gradientColors = when (mode) {
-        RingerMode.SILENT -> listOf(RoseAccent, Color(0xFF9F1239))
-        RingerMode.VIBRATE -> listOf(TealAccent, Color(0xFF115E59))
-        RingerMode.NORMAL -> listOf(IndigoAccent, Color(0xFF3730A3))
+        RingerMode.SILENT -> listOf(MaterialTheme.colorScheme.error, MaterialTheme.colorScheme.error.copy(alpha = 0.7f))
+        RingerMode.VIBRATE -> listOf(MaterialTheme.colorScheme.secondary, MaterialTheme.colorScheme.secondary.copy(alpha = 0.7f))
+        RingerMode.NORMAL -> listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.7f))
     }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(320.dp)
-            .background(Brush.verticalGradient(listOf(DeepSpace, MidnightBlue)))
+            .background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.surface)))
             .padding(bottom = 24.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -127,7 +134,7 @@ fun PulseStatusHeader(mode: RingerMode, isFallback: Boolean = false) {
                         .size(100.dp)
                         .clip(CircleShape)
                         .background(Brush.linearGradient(gradientColors))
-                        .border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape),
+                        .border(1.dp, MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.2f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -138,7 +145,7 @@ fun PulseStatusHeader(mode: RingerMode, isFallback: Boolean = false) {
                         },
                         contentDescription = null,
                         modifier = Modifier.size(44.dp),
-                        tint = Color.White
+                        tint = if (mode == RingerMode.NORMAL) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -159,7 +166,7 @@ fun PulseStatusHeader(mode: RingerMode, isFallback: Boolean = false) {
                     letterSpacing = 1.sp,
                     fontWeight = FontWeight.Black
                 ),
-                color = Color.White
+                color = MaterialTheme.colorScheme.onBackground
             )
             
             Text(
@@ -197,14 +204,14 @@ fun ImportantContactItemCard(contact: ImportantContact, onDelete: () -> Unit) {
                     modifier = Modifier
                         .size(48.dp)
                         .clip(RoundedCornerShape(14.dp))
-                        .background(IndigoAccent.copy(alpha = 0.1f))
-                        .border(1.dp, IndigoAccent.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(14.dp)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        tint = IndigoAccent
+                        tint = MaterialTheme.colorScheme.primary
                     )
                 }
                 Column {
@@ -212,12 +219,12 @@ fun ImportantContactItemCard(contact: ImportantContact, onDelete: () -> Unit) {
                         text = contact.name,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = contact.phoneNumber,
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.6f)
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -225,12 +232,12 @@ fun ImportantContactItemCard(contact: ImportantContact, onDelete: () -> Unit) {
                 onClick = onDelete,
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(RoseAccent.copy(alpha = 0.1f))
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
             ) {
                 Icon(
                     imageVector = Icons.Default.DeleteOutline,
                     contentDescription = "Delete",
-                    tint = RoseAccent
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
         }
@@ -245,7 +252,7 @@ fun DashboardSectionHeader(title: String, modifier: Modifier = Modifier) {
             letterSpacing = 1.5.sp,
             fontWeight = FontWeight.Black
         ),
-        color = Color.White.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 12.dp)
@@ -258,7 +265,7 @@ fun ModeToggleCard(
     icon: ImageVector,
     isActive: Boolean,
     onClick: () -> Unit,
-    activeColor: Color = IndigoAccent
+    activeColor: Color = MaterialTheme.colorScheme.primary
 ) {
     val scale by animateFloatAsState(if (isActive) 1.05f else 1f, label = "scale")
     
@@ -270,11 +277,11 @@ fun ModeToggleCard(
             .clickable { onClick() }
             .border(
                 1.dp, 
-                if (isActive) activeColor.copy(alpha = 0.5f) else GlassBorder, 
+                if (isActive) activeColor.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), 
                 RoundedCornerShape(24.dp)
             ),
         colors = CardDefaults.cardColors(
-            containerColor = if (isActive) activeColor.copy(alpha = 0.15f) else GlassWhite
+            containerColor = if (isActive) activeColor.copy(alpha = 0.15f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ),
         shape = RoundedCornerShape(24.dp)
     ) {
@@ -286,14 +293,14 @@ fun ModeToggleCard(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (isActive) activeColor else Color.White.copy(alpha = 0.4f),
+                tint = if (isActive) activeColor else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                 modifier = Modifier.size(32.dp)
             )
             Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = if (isActive) Color.White else Color.White.copy(alpha = 0.4f)
+                color = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             )
         }
     }
@@ -305,8 +312,8 @@ fun DndActionCard(onGrantAccess: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .border(1.dp, RoseAccent.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
-        colors = CardDefaults.cardColors(containerColor = RoseAccent.copy(alpha = 0.15f)),
+            .border(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.15f)),
         shape = RoundedCornerShape(24.dp)
     ) {
         Row(
@@ -317,31 +324,31 @@ fun DndActionCard(onGrantAccess: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .background(RoseAccent.copy(alpha = 0.2f), CircleShape),
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.2f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.NotificationsPaused, null, tint = RoseAccent)
+                Icon(Icons.Default.NotificationsPaused, null, tint = MaterialTheme.colorScheme.error)
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "Silent Mode Restricted",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     "Grant DND access to enable full silence.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.White.copy(alpha = 0.7f)
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
             Button(
                 onClick = onGrantAccess,
-                colors = ButtonDefaults.buttonColors(containerColor = RoseAccent),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 shape = RoundedCornerShape(12.dp),
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) {
-                Text("FIX NOW", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+                Text("FIX NOW", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onError)
             }
         }
     }
@@ -361,17 +368,17 @@ fun OperationOverlay(state: com.sandeep.silentzone.OperationState) {
             contentAlignment = Alignment.TopCenter
         ) {
             val color = when (state) {
-                is com.sandeep.silentzone.OperationState.Loading -> CyanAccent
-                is com.sandeep.silentzone.OperationState.Success -> TealAccent
-                is com.sandeep.silentzone.OperationState.Error -> RoseAccent
-                else -> Color.Gray
+                is com.sandeep.silentzone.OperationState.Loading -> MaterialTheme.colorScheme.secondary
+                is com.sandeep.silentzone.OperationState.Success -> MaterialTheme.colorScheme.primary
+                is com.sandeep.silentzone.OperationState.Error -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
             }
             
             Card(
                 modifier = Modifier
                     .wrapContentWidth()
                     .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(20.dp)),
-                colors = CardDefaults.cardColors(containerColor = MidnightBlue.copy(alpha = 0.9f)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.9f)),
                 shape = RoundedCornerShape(20.dp)
             ) {
                 Row(
@@ -406,7 +413,7 @@ fun OperationOverlay(state: com.sandeep.silentzone.OperationState) {
                             else -> ""
                         },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -419,9 +426,9 @@ fun OperationOverlay(state: com.sandeep.silentzone.OperationState) {
 fun PermissionWarningCard(onGrantAccess: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = RoseAccent.copy(alpha = 0.1f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)),
         shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.dp, RoseAccent.copy(alpha = 0.3f))
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.3f))
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -431,31 +438,31 @@ fun PermissionWarningCard(onGrantAccess: () -> Unit) {
                 Icon(
                     Icons.Default.PriorityHigh,
                     contentDescription = null,
-                    tint = RoseAccent
+                    tint = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(
                     text = "Permission Required",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Black,
-                    color = RoseAccent
+                    color = MaterialTheme.colorScheme.error
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "SilentZone needs 'Do Not Disturb' access to manage your ringer modes automatically.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.7f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
             Spacer(modifier = Modifier.height(20.dp))
             Button(
                 onClick = onGrantAccess,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = RoseAccent),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                 shape = RoundedCornerShape(16.dp),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
             ) {
-                Text("Grant Access", fontWeight = FontWeight.Bold, color = Color.White)
+                Text("Grant Access", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onError)
             }
         }
     }
@@ -470,7 +477,7 @@ fun SsidSelectionDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
-            Text("Nearby Networks", fontWeight = FontWeight.Black, color = Color.White)
+            Text("Nearby Networks", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
         },
         text = {
             Column(
@@ -485,35 +492,35 @@ fun SsidSelectionDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(16.dp))
-                            .background(GlassWhite)
-                            .border(1.dp, GlassBorder, RoundedCornerShape(16.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
                             .clickable { onSsidSelected(ssid) }
                             .padding(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
-                            modifier = Modifier.size(32.dp).background(CyanAccent.copy(alpha = 0.1f), CircleShape),
+                            modifier = Modifier.size(32.dp).background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Wifi, null, tint = CyanAccent, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
                         }
-                        Text(ssid, color = Color.White, fontWeight = FontWeight.Medium)
+                        Text(ssid, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
                     }
                 }
                 if (ssids.isEmpty()) {
-                    Text("Searching for networks...", color = Color.White.copy(alpha = 0.4f))
+                    Text("Searching for networks...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
                 }
             }
         },
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = RoseAccent, fontWeight = FontWeight.Bold)
+                Text("CANCEL", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
             }
         },
         shape = RoundedCornerShape(32.dp),
-        containerColor = MidnightBlue
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
@@ -536,21 +543,21 @@ fun ZoneItemCard(ssid: String, onDelete: () -> Unit) {
                     modifier = Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(CyanAccent.copy(alpha = 0.1f))
-                        .border(1.dp, CyanAccent.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
+                        .border(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Wifi, null, tint = CyanAccent)
+                    Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.secondary)
                 }
-                Text(ssid, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(ssid, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
             }
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(RoseAccent.copy(alpha = 0.1f))
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
             ) {
-                Icon(Icons.Default.DeleteOutline, null, tint = RoseAccent)
+                Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error)
             }
         }
     }
@@ -564,30 +571,30 @@ fun ModeSelectionDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MidnightBlue,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(32.dp),
-        title = { Text("Configure Zone", fontWeight = FontWeight.Black, color = Color.White) },
+        title = { Text("Configure Zone", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column {
-                Text("Switch mode when connected to $ssid:", color = Color.White.copy(alpha = 0.6f))
+                Text("Switch mode when connected to $ssid:", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                 Spacer(modifier = Modifier.height(24.dp))
                 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Button(
                         onClick = { onModeSelected(RingerMode.SILENT) },
                         modifier = Modifier.weight(1f).height(60.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = RoseAccent),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text("SILENT", fontWeight = FontWeight.Bold)
+                        Text("SILENT", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onError)
                     }
                     Button(
                         onClick = { onModeSelected(RingerMode.VIBRATE) },
                         modifier = Modifier.weight(1f).height(60.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = TealAccent),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         shape = RoundedCornerShape(16.dp)
                     ) {
-                        Text("VIBRATE", fontWeight = FontWeight.Bold)
+                        Text("VIBRATE", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondary)
                     }
                 }
             }
@@ -595,7 +602,7 @@ fun ModeSelectionDialog(
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = Color.White.copy(alpha = 0.4f))
+                Text("CANCEL", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
             }
         }
     )
@@ -610,13 +617,13 @@ fun RadiusSelectionDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = MidnightBlue,
+        containerColor = MaterialTheme.colorScheme.surface,
         shape = RoundedCornerShape(32.dp),
-        title = { Text("Search Radius", fontWeight = FontWeight.Black, color = Color.White) },
+        title = { Text("Search Radius", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("${radius.toInt()}m", style = MaterialTheme.typography.displaySmall, color = CyanAccent, fontWeight = FontWeight.Black)
+                    Text("${radius.toInt()}m", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Black)
                 }
                 Spacer(modifier = Modifier.height(24.dp))
                 Slider(
@@ -625,9 +632,9 @@ fun RadiusSelectionDialog(
                     valueRange = 50f..1000f,
                     steps = 18,
                     colors = SliderDefaults.colors(
-                        thumbColor = CyanAccent,
-                        activeTrackColor = CyanAccent,
-                        inactiveTrackColor = GlassBorder
+                        thumbColor = MaterialTheme.colorScheme.secondary,
+                        activeTrackColor = MaterialTheme.colorScheme.secondary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
                     )
                 )
             }
@@ -635,10 +642,10 @@ fun RadiusSelectionDialog(
         confirmButton = {
             Button(
                 onClick = { onRadiusSelected(radius) },
-                colors = ButtonDefaults.buttonColors(containerColor = CyanAccent),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                 shape = RoundedCornerShape(16.dp)
             ) {
-                Text("SET RADIUS", color = MidnightBlue, fontWeight = FontWeight.Bold)
+                Text("SET RADIUS", color = MaterialTheme.colorScheme.onSecondary, fontWeight = FontWeight.Bold)
             }
         }
     )
@@ -663,24 +670,24 @@ fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
                     modifier = Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(TealAccent.copy(alpha = 0.1f))
-                        .border(1.dp, TealAccent.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.LocationOn, null, tint = TealAccent)
+                    Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
                 }
                 Column {
-                    Text(zone.name, fontWeight = FontWeight.Bold, color = Color.White)
-                    Text("${zone.radius.toInt()}m range", style = MaterialTheme.typography.bodySmall, color = Color.White.copy(alpha = 0.5f))
+                    Text(zone.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text("${zone.radius.toInt()}m range", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 }
             }
             IconButton(
                 onClick = onDelete,
                 modifier = Modifier
                     .clip(CircleShape)
-                    .background(RoseAccent.copy(alpha = 0.1f))
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
             ) {
-                Icon(Icons.Default.DeleteOutline, null, tint = RoseAccent)
+                Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error)
             }
         }
     }

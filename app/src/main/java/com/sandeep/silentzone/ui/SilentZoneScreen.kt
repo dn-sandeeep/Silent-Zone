@@ -5,6 +5,7 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -81,11 +82,52 @@ fun SilentScreen(
         )
     } else {
         Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = when (selectedScreen) {
+                                0 -> "Home"
+                                1 -> "Zones"
+                                2 -> "Safe"
+                                else -> "SilentZone"
+                            },
+                            style = MaterialTheme.typography.headlineSmall.copy(
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = (-0.5).sp
+                            )
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { /* App icon/Drawer maybe? */ }) {
+                            Icon(
+                                Icons.Default.Adjust, 
+                                contentDescription = "Logo",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { /* History */ }) {
+                            Icon(Icons.Default.History, contentDescription = "History")
+                        }
+                        IconButton(onClick = { /* Settings */ }) {
+                            Icon(Icons.Default.Settings, contentDescription = "Settings")
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
+                        titleContentColor = MaterialTheme.colorScheme.onBackground,
+                        actionIconContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
+                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+            },
             bottomBar = {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    color = MidnightBlue.copy(alpha = 0.95f),
-                    border = BorderStroke(1.dp, GlassBorder)
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
                 ) {
                     NavigationBar(
                         containerColor = Color.Transparent,
@@ -97,11 +139,11 @@ fun SilentScreen(
                             icon = { Icon(Icons.Default.Home, null) },
                             label = { Text("Home", fontWeight = FontWeight.Bold) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = IndigoAccent,
-                                selectedTextColor = IndigoAccent,
-                                unselectedIconColor = Color.White.copy(alpha = 0.4f),
-                                unselectedTextColor = Color.White.copy(alpha = 0.4f),
-                                indicatorColor = IndigoAccent.copy(alpha = 0.1f)
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                             )
                         )
                         NavigationBarItem(
@@ -110,11 +152,11 @@ fun SilentScreen(
                             icon = { Icon(Icons.Default.GridView, null) },
                             label = { Text("Zones", fontWeight = FontWeight.Bold) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = CyanAccent,
-                                selectedTextColor = CyanAccent,
-                                unselectedIconColor = Color.White.copy(alpha = 0.4f),
-                                unselectedTextColor = Color.White.copy(alpha = 0.4f),
-                                indicatorColor = CyanAccent.copy(alpha = 0.1f)
+                                selectedIconColor = MaterialTheme.colorScheme.secondary,
+                                selectedTextColor = MaterialTheme.colorScheme.secondary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                indicatorColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
                             )
                         )
                         NavigationBarItem(
@@ -123,11 +165,11 @@ fun SilentScreen(
                             icon = { Icon(Icons.Default.VerifiedUser, null) },
                             label = { Text("Safe", fontWeight = FontWeight.Bold) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = TealAccent,
-                                selectedTextColor = TealAccent,
-                                unselectedIconColor = Color.White.copy(alpha = 0.4f),
-                                unselectedTextColor = Color.White.copy(alpha = 0.4f),
-                                indicatorColor = TealAccent.copy(alpha = 0.1f)
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                             )
                         )
                     }
@@ -139,8 +181,8 @@ fun SilentScreen(
                         onClick = {
                             if (selectedScreen == 1) showAddTypeDialog = true else onPickContact()
                         },
-                        containerColor = if (selectedScreen == 1) CyanAccent else TealAccent,
-                        contentColor = MidnightBlue,
+                        containerColor = if (selectedScreen == 1) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Icon(Icons.Default.Add, contentDescription = "Add")
@@ -151,7 +193,7 @@ fun SilentScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Brush.verticalGradient(listOf(DeepSpace, MidnightBlue)))
+                    .background(MaterialTheme.colorScheme.background)
                     .padding(innerPadding)
             ) {
                 AnimatedContent(
@@ -280,28 +322,28 @@ fun DashboardScreen(
                 DashboardSectionHeader("Quick Controls")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.SpaceAround
                 ) {
                     ModeToggleCard(
                         title = "Normal",
                         icon = Icons.Default.NotificationsActive,
                         isActive = mode == RingerMode.NORMAL,
                         onClick = setNormal,
-                        activeColor = IndigoAccent
+                        activeColor = MaterialTheme.colorScheme.primary
                     )
                     ModeToggleCard(
                         title = "Vibrate",
                         icon = Icons.Default.Vibration,
                         isActive = mode == RingerMode.VIBRATE,
                         onClick = setVibrate,
-                        activeColor = TealAccent
+                        activeColor = MaterialTheme.colorScheme.secondary
                     )
                     ModeToggleCard(
                         title = "Silent",
                         icon = Icons.Default.DoNotDisturbOn,
                         isActive = mode == RingerMode.SILENT,
                         onClick = setSilent,
-                        activeColor = RoseAccent
+                        activeColor = MaterialTheme.colorScheme.error
                     )
                 }
             }
@@ -317,23 +359,23 @@ fun DashboardScreen(
                             Box(
                                 modifier = Modifier
                                     .size(40.dp)
-                                    .background(CyanAccent.copy(alpha = 0.1f), CircleShape),
+                                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f), CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Wifi, null, tint = CyanAccent, modifier = Modifier.size(20.dp))
+                                Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(
                                     "Connected to Wi-Fi",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = Color.White.copy(alpha = 0.5f)
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                                 )
                                 Text(
                                     currentWifiSsid,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.White
+                                    color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
                         }
@@ -358,20 +400,7 @@ fun ZonesScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(
-                "SMART ZONES",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-1).sp
-                ),
-                color = Color.White
-            )
-            Text(
-                "Automation rules for your rings",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.5f)
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         if (locationZones.isEmpty() && silentSsids.isEmpty() && vibrateSsids.isEmpty()) {
@@ -410,20 +439,7 @@ fun ContactsScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         item {
-            Text(
-                "WHITELIST",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Black,
-                    letterSpacing = (-1).sp
-                ),
-                color = Color.White
-            )
-            Text(
-                "Important calls that bypass silence",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.5f)
-            )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
         if (contacts.isEmpty()) {
@@ -448,47 +464,47 @@ fun AddZoneTypeDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Automate Mode", fontWeight = FontWeight.Black, color = Color.White) },
+        title = { Text("Automate Mode", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
                     onClick = { onRequestPermission { onCurrentLocation() } },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = GlassWhite)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
-                    Icon(Icons.Default.MyLocation, null, tint = IndigoAccent)
+                    Icon(Icons.Default.MyLocation, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Current Location", color = Color.White)
+                    Text("Current Location", color = MaterialTheme.colorScheme.onSurface)
                 }
                 Button(
                     onClick = { onRequestPermission { onSelectMap() } },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = GlassWhite)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
-                    Icon(Icons.Default.Map, null, tint = CyanAccent)
+                    Icon(Icons.Default.Map, null, tint = MaterialTheme.colorScheme.secondary)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Pick on Map", color = Color.White)
+                    Text("Pick on Map", color = MaterialTheme.colorScheme.onSurface)
                 }
                 Button(
                     onClick = { onRequestPermission { onWifi() } },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = GlassWhite)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
                 ) {
-                    Icon(Icons.Default.Wifi, null, tint = TealAccent)
+                    Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.primary)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Connect to WiFi", color = Color.White)
+                    Text("Connect to WiFi", color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = RoseAccent, fontWeight = FontWeight.Bold) }
+            TextButton(onClick = onDismiss) { Text("CANCEL", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
         },
         shape = RoundedCornerShape(32.dp),
-        containerColor = MidnightBlue
+        containerColor = MaterialTheme.colorScheme.surface
     )
 }
 
@@ -504,21 +520,21 @@ fun EmptyStateText(text: String) {
         Box(
             modifier = Modifier
                 .size(100.dp)
-                .background(GlassWhite, CircleShape),
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 Icons.Default.AutoAwesome,
                 null,
                 modifier = Modifier.size(48.dp),
-                tint = Color.White.copy(alpha = 0.2f)
+                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.White.copy(alpha = 0.4f),
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
     }

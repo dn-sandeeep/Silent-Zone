@@ -2,27 +2,33 @@ package com.sandeep.silentzone.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Premium Dark Palette
-val DeepSpace = Color(0xFF0F111A)
-val MidnightBlue = Color(0xFF161B22)
+// Chrome Edition Palette
+// Light Mode
+val ChromeBlue = Color(0xFF4285F4)
+val ChromeGreen = Color(0xFF34A853)
+val ChromeYellow = Color(0xFFFBBC05)
+val ChromeRed = Color(0xFFEA4335)
+val LightBg = Color(0xFFF1F3F4)
+val SurfaceWhite = Color(0xFFFFFFFF)
+
+// Dark Mode
+val ChromeBlueDark = Color(0xFF8AB4F8)
+val ChromeGreenDark = Color(0xFF81C995)
+val ChromeYellowDark = Color(0xFFFDE293)
+val ChromeRedDark = Color(0xFFF28B82)
+val DarkBg = Color(0xFF202124)
+val SurfaceDark = Color(0xFF292A2D)
+
+// Glass Effects
 val GlassWhite = Color(0x1AFFFFFF)
+val GlassDark = Color(0x1A000000)
 val GlassBorder = Color(0x33FFFFFF)
 
-// Accents (Vibrant & Professional)
-val IndigoAccent = Color(0xFF818CF8)
-val CyanAccent = Color(0xFF22D3EE)
-val TealAccent = Color(0xFF2DD4BF)
-val RoseAccent = Color(0xFFFB7185)
-
-// Secondary Colors
-val Slate700 = Color(0xFF334155)
-val Slate800 = Color(0xFF1E293B)
-val Slate900 = Color(0xFF0F172A)
-
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
-
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Legacy Support
+val DeepSpace = DarkBg
+val MidnightBlue = SurfaceDark
+val Slate800 = Color(0xFF3C4043)
+val IndigoAccent = ChromeBlueDark
+val CyanAccent = ChromeYellowDark
+val TealAccent = ChromeGreenDark
+val RoseAccent = ChromeRedDark
