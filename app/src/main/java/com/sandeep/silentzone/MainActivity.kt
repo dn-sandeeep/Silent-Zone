@@ -129,7 +129,9 @@ class MainActivity : ComponentActivity() {
                             importantContacts = importantContacts,
                             onPickContact = { handleAddImportantContact() },
                             onDeleteContact = { phoneNumber -> vm.removeImportantContact(phoneNumber) },
-                            onRequestPermission = { action -> permissionManager.requestLocationPermissions { action() } }
+                            onRequestPermission = { action -> permissionManager.requestLocationPermissions { action() } },
+                            zoneCount = wifiZones.size + locationZones.size,
+                            contactCount = importantContacts.size
                         )
                     }
                 }

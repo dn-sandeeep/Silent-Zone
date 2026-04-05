@@ -55,7 +55,9 @@ fun SilentScreen(
     importantContacts: List<ImportantContact>,
     onPickContact: () -> Unit,
     onDeleteContact: (String) -> Unit,
-    onRequestPermission: (() -> Unit) -> Unit
+    onRequestPermission: (() -> Unit) -> Unit,
+    zoneCount: Int = 0,
+    contactCount: Int = 0
 ) {
     var selectedScreen by remember { mutableStateOf(0) }
     
@@ -209,7 +211,9 @@ fun SilentScreen(
                             setSilent = setSilent,
                             setVibrate = setVibrate,
                             setNormal = setNormal,
-                            currentWifiSsid = currentWifiSsid
+                            currentWifiSsid = currentWifiSsid,
+                            zoneCount = zoneCount,
+                            contactCount = contactCount
                         )
                         1 -> ZonesScreen(
                             silentSsids = silentSsids,
@@ -296,7 +300,9 @@ fun DashboardScreen(
     setSilent: () -> Unit,
     setVibrate: () -> Unit,
     setNormal: () -> Unit,
-    currentWifiSsid: String?
+    currentWifiSsid: String?,
+    zoneCount: Int,
+    contactCount: Int
 ) {
     Column(
         modifier = Modifier
@@ -310,6 +316,31 @@ fun DashboardScreen(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
+            // New Stat Bubbles Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceAround
+            ) {
+                StatBubble(
+                    label = "Zones",
+                    value = zoneCount.toString(),
+                    icon = Icons.Default.Map,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                StatBubble(
+                    label = "Whitelist",
+                    value = contactCount.toString(),
+                    icon = Icons.Default.VerifiedUser,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                StatBubble(
+                    label = "Security",
+                    value = if (accessGranted) "On" else "Off",
+                    icon = if (accessGranted) Icons.Default.GppGood else Icons.Default.GppMaybe,
+                    color = if (accessGranted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                )
+            }
+
             if (!accessGranted) {
                 if (isFallback) {
                     DndActionCard(onGrantAccess = onGrantAccess)
@@ -382,6 +413,42 @@ fun DashboardScreen(
                     }
                 }
             }
+
+            // Recent Activity Section
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                DashboardSectionHeader("Recent Activity")
+                GlassCard {
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ActivityLogItem(
+                            title = "System Ready",
+                            time = "Active Now",
+                            icon = Icons.Default.AutoAwesome,
+                            iconColor = MaterialTheme.colorScheme.primary
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                        ActivityLogItem(
+                            title = "Smart Zone Tracking",
+                            time = "Monitoring in Background",
+                            icon = Icons.Default.LocationOn,
+                            iconColor = MaterialTheme.colorScheme.secondary
+                        )
+                        if (mode != RingerMode.NORMAL) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
+                            ActivityLogItem(
+                                title = "Auto Mode Engaged",
+                                time = "Currently ${when(mode) { RingerMode.SILENT -> "Silent"; RingerMode.VIBRATE -> "Vibrate"; else -> "Normal" }}",
+                                icon = Icons.Default.SmartButton,
+                                iconColor = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
