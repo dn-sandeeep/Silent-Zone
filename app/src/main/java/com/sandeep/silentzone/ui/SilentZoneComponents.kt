@@ -46,7 +46,7 @@ fun GlassCard(
 }
 
 @Composable
-fun PulseStatusHeader(mode: RingerMode) {
+fun PulseStatusHeader(mode: RingerMode, isFallback: Boolean = false) {
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     
     val pulseScale by infiniteTransition.animateFloat(
@@ -146,7 +146,11 @@ fun PulseStatusHeader(mode: RingerMode) {
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = when (mode) {
+                text = if (isFallback) "${when (mode) {
+                    RingerMode.SILENT -> "Silent"
+                    RingerMode.VIBRATE -> "Vibrate"
+                    RingerMode.NORMAL -> "Normal"
+                }} (Fallback)" else when (mode) {
                     RingerMode.SILENT -> "Silent Mode"
                     RingerMode.VIBRATE -> "Vibrate Mode"
                     RingerMode.NORMAL -> "Normal Mode"
@@ -291,6 +295,122 @@ fun ModeToggleCard(
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                 color = if (isActive) Color.White else Color.White.copy(alpha = 0.4f)
             )
+        }
+    }
+}
+
+@Composable
+fun DndActionCard(onGrantAccess: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .border(1.dp, RoseAccent.copy(alpha = 0.3f), RoundedCornerShape(24.dp)),
+        colors = CardDefaults.cardColors(containerColor = RoseAccent.copy(alpha = 0.15f)),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(RoseAccent.copy(alpha = 0.2f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Default.NotificationsPaused, null, tint = RoseAccent)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Silent Mode Restricted",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Text(
+                    "Grant DND access to enable full silence.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.7f)
+                )
+            }
+            Button(
+                onClick = onGrantAccess,
+                colors = ButtonDefaults.buttonColors(containerColor = RoseAccent),
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp)
+            ) {
+                Text("FIX NOW", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Black)
+            }
+        }
+    }
+}
+
+@Composable
+fun OperationOverlay(state: com.sandeep.silentzone.OperationState) {
+    AnimatedVisibility(
+        visible = state !is com.sandeep.silentzone.OperationState.Idle,
+        enter = fadeIn() + slideInVertically(),
+        exit = fadeOut() + slideOutVertically()
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            contentAlignment = Alignment.TopCenter
+        ) {
+            val color = when (state) {
+                is com.sandeep.silentzone.OperationState.Loading -> CyanAccent
+                is com.sandeep.silentzone.OperationState.Success -> TealAccent
+                is com.sandeep.silentzone.OperationState.Error -> RoseAccent
+                else -> Color.Gray
+            }
+            
+            Card(
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .border(1.dp, color.copy(alpha = 0.3f), RoundedCornerShape(20.dp)),
+                colors = CardDefaults.cardColors(containerColor = MidnightBlue.copy(alpha = 0.9f)),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (state is com.sandeep.silentzone.OperationState.Loading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = color,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Icon(
+                            imageVector = when (state) {
+                                is com.sandeep.silentzone.OperationState.Success -> Icons.Default.CheckCircle
+                                is com.sandeep.silentzone.OperationState.Error -> Icons.Default.Error
+                                else -> Icons.Default.Info
+                            },
+                            contentDescription = null,
+                            tint = color,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    
+                    Text(
+                        text = when (state) {
+                            is com.sandeep.silentzone.OperationState.Loading -> "Processing..."
+                            is com.sandeep.silentzone.OperationState.Success -> state.message
+                            is com.sandeep.silentzone.OperationState.Error -> state.message
+                            else -> ""
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
 }

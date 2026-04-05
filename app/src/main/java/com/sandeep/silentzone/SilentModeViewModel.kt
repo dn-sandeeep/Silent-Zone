@@ -9,12 +9,37 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+sealed class OperationState {
+    object Idle : OperationState()
+    object Loading : OperationState()
+    data class Success(val message: String) : OperationState()
+    data class Error(val message: String) : OperationState()
+}
+
 @HiltViewModel
 class SilentModeViewModel @Inject constructor(
     private val repo: SilentModeRepository
 ) : ViewModel() {
+    private val _operationState = MutableStateFlow<OperationState>(OperationState.Idle)
+    val operationState: StateFlow<OperationState> = _operationState.asStateFlow()
+
+    private val _isFallback = MutableStateFlow(false)
+
     private val _availableSsidList = MutableStateFlow<List<String>>(emptyList())
     val availableSsidList: StateFlow<List<String>> = _availableSsidList.asStateFlow()
+
+    init {
+        // Handle DND Fallback events
+        viewModelScope.launch {
+            repo.fallbackEvents.collect {
+                _isFallback.value = true
+                _operationState.value = OperationState.Error("DND access required for SILENT mode. Using Vibrate.")
+                delay(4000)
+                _operationState.value = OperationState.Idle
+            }
+        }
+    }
+
     fun updateSsidList(ssids: List<String>) {
         _availableSsidList.value = ssids
     }
@@ -27,24 +52,52 @@ class SilentModeViewModel @Inject constructor(
 
     val uiStateFlow: StateFlow<UiState> = combine(
         repo.currentModeFlow,
-        _message
-    ) { mode, msg ->
+        _message,
+        _isFallback
+    ) { mode, msg, fallback ->
         UiState(
             accessGranted = repo.hasPolicyAccess(),
             currentMode = mode,
+            isFallback = fallback && !repo.hasPolicyAccess(),
             message = msg
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState(repo.hasPolicyAccess(), repo.getCurrentMode(), null))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState(repo.hasPolicyAccess(), repo.getCurrentMode(), false, null))
 
     fun refresh() {
         repo.refreshMode()
     }
-    fun setSilent() {
+
+    private fun launchOperation(message: String, action: suspend () -> Unit) {
         viewModelScope.launch {
+            _operationState.value = OperationState.Loading
+            try {
+                action()
+                _operationState.value = OperationState.Success(message)
+                delay(2000)
+                _operationState.value = OperationState.Idle
+            } catch (e: Exception) {
+                _operationState.value = OperationState.Error(e.message ?: "Operation failed")
+                delay(3000)
+                _operationState.value = OperationState.Idle
+            }
+        }
+    }
+
+    fun setSilent() {
+        launchOperation("Silent mode enabled") {
             repo.setSilent()
-            _message.value = "Silent mode enabled"
-            delay(2000)
-            _message.value = null
+        }
+    }
+
+    fun setVibrate() {
+        launchOperation("Vibrate mode enabled") {
+            repo.setVibrate()
+        }
+    }
+
+    fun setNormal() {
+        launchOperation("Normal mode enabled") {
+            repo.setNormal()
         }
     }
 
@@ -52,7 +105,7 @@ class SilentModeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun addWifiZone(ssid: String, mode: RingerMode) {
-        viewModelScope.launch {
+        launchOperation("WiFi Zone Added!") {
             repo.addWifiZone(WifiZone(ssid, mode))
         }
     }
@@ -64,26 +117,8 @@ class SilentModeViewModel @Inject constructor(
     }
 
     fun removeWifiZone(ssid: String) {
-        viewModelScope.launch {
+        launchOperation("WiFi Zone Removed") {
             repo.removeWifiZone(ssid)
-        }
-    }
-
-    fun setVibrate() {
-        viewModelScope.launch {
-            repo.setVibrate()
-            _message.value = "Vibrate mode enabled"
-            delay(2000)
-            _message.value = null
-        }
-    }
-
-    fun setNormal() {
-        viewModelScope.launch {
-            repo.setNormal()
-            _message.value = "Normal mode enabled"
-            delay(2000)
-            _message.value = null
         }
     }
 
@@ -94,44 +129,39 @@ class SilentModeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun addImportantContact(name: String, phoneNumber: String) {
-        viewModelScope.launch {
+        launchOperation("Important contact added!") {
             val contact = ImportantContact(
                 id = java.util.UUID.randomUUID().toString(),
                 name = name,
                 phoneNumber = phoneNumber
             )
             repo.addImportantContact(contact)
-            _message.value = "Important contact added!"
-            delay(2000)
-            _message.value = null
         }
     }
 
     fun removeImportantContact(phoneNumber: String) {
-        viewModelScope.launch {
+        launchOperation("Important contact removed!") {
             repo.removeImportantContact(phoneNumber)
-            _message.value = "Important contact removed!"
-            delay(2000)
-            _message.value = null
         }
     }
 
     fun addCurrentLocationZone(mode: RingerMode, radius: Float = 100f) {
+        _operationState.value = OperationState.Loading
         repo.getCurrentLocation(
             onLocationResult = { lat, lon ->
                 addLocationZone(lat, lon, "Zone ${locationZones.value.size + 1}", mode, radius)
-                _message.value = "Location Zone Added!"
+                _operationState.value = OperationState.Success("Location Zone Added!")
                 viewModelScope.launch {
                     delay(2000)
-                    _message.value = null
+                    _operationState.value = OperationState.Idle
                 }
             },
             onError = {
                 Log.e("SilentModeViewModel", "Could not get current location")
-                _message.value = "Error: Could not get location"
+                _operationState.value = OperationState.Error("Could not get location")
                 viewModelScope.launch {
-                    delay(2000)
-                    _message.value = null
+                    delay(3000)
+                    _operationState.value = OperationState.Idle
                 }
             }
         )
@@ -152,8 +182,8 @@ class SilentModeViewModel @Inject constructor(
     }
 
     fun removeLocationZone(id: String) {
-        viewModelScope.launch {
+        launchOperation("Location Zone Removed") {
             repo.removeLocationZone(id)
         }
     }
-}
+}

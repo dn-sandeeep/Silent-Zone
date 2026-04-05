@@ -76,6 +76,7 @@ class MainActivity : ComponentActivity() {
                 MaterialTheme {
                     Surface(Modifier.fillMaxSize()) {
                         val state = vm.uiStateFlow.collectAsStateWithLifecycle().value
+                        val opState = vm.operationState.collectAsStateWithLifecycle().value
                         val availableSsidList = vm.availableSsidList.collectAsStateWithLifecycle().value
                         val wifiZones = vm.wifiZones.collectAsStateWithLifecycle().value
                         val locationZones = vm.locationZones.collectAsStateWithLifecycle().value
@@ -88,14 +89,15 @@ class MainActivity : ComponentActivity() {
                         SilentScreen(
                             accessGranted = state.accessGranted,
                             mode = state.currentMode,
-                            message = state.message,
+                            isFallback = state.isFallback,
+                            operationState = opState,
                             onGrantAccess = {
                                 startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
                             },
                             setSilent = vm::setSilent,
                             setVibrate = vm::setVibrate,
                             setNormal = vm::setNormal,
-                            addZone = { permissionManager.ensureLocationPermission { startWifiScan() } },
+                            addZone = { permissionManager.requestLocationPermissions { startWifiScan() } },
                             availableSsidList = availableSsidList,
                             onSelectedSsid = { ssid, mode -> saveSsid(ssid, mode) },
                             onDismissDialog = { vm.clearSsidList() },
@@ -104,7 +106,6 @@ class MainActivity : ComponentActivity() {
                             onDeleteSsid = { ssid ->
                                 vm.removeWifiZone(ssid)
                             },
-                            wifiPermissionGranted = permissionManager.wifiPermissionGranted(),
                             currentWifiSsid = currentWifiSsid,
                             locationZones = locationZones,
                             onAddLocationZone = { mode, radius -> 
@@ -128,7 +129,7 @@ class MainActivity : ComponentActivity() {
                             importantContacts = importantContacts,
                             onPickContact = { handleAddImportantContact() },
                             onDeleteContact = { phoneNumber -> vm.removeImportantContact(phoneNumber) },
-                            onRequestPermission = { action -> permissionManager.ensureLocationPermission { action() } }
+                            onRequestPermission = { action -> permissionManager.requestLocationPermissions { action() } }
                         )
                     }
                 }
@@ -137,7 +138,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleAddImportantContact() {
-        permissionManager.ensureLocationPermission {
+        permissionManager.requestContactPermissions {
             openContactPicker()
         }
     }

@@ -8,10 +8,11 @@ import com.sandeep.silentzone.data.LocationZoneEntity
 import com.sandeep.silentzone.data.SilentZoneDao
 import com.sandeep.silentzone.data.WifiZoneEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -48,6 +49,9 @@ class SilentModeRepository @Inject constructor(
     
     private val _currentModeFlow = kotlinx.coroutines.flow.MutableStateFlow(getCurrentMode())
     val currentModeFlow: kotlinx.coroutines.flow.StateFlow<RingerMode> = _currentModeFlow.asStateFlow()
+
+    private val _fallbackEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(replay = 0)
+    val fallbackEvents = _fallbackEvents.asSharedFlow()
 
     fun refreshMode() {
         _currentModeFlow.value = getCurrentMode()
@@ -105,16 +109,24 @@ class SilentModeRepository @Inject constructor(
     }
 
     private fun applyMode(mode: RingerMode) {
-        if (!hasPolicyAccess() && mode == RingerMode.SILENT) return
+        var targetMode = mode
+        if (!hasPolicyAccess() && mode == RingerMode.SILENT) {
+            targetMode = RingerMode.VIBRATE
+            @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
+            GlobalScope.launch(Dispatchers.Main) {
+                _fallbackEvents.emit(Unit)
+            }
+        }
+
         try {
-            when (mode) {
+            when (targetMode) {
                 RingerMode.SILENT -> audio.ringerMode = AudioManager.RINGER_MODE_SILENT
                 RingerMode.VIBRATE -> audio.ringerMode = AudioManager.RINGER_MODE_VIBRATE
                 RingerMode.NORMAL -> audio.ringerMode = AudioManager.RINGER_MODE_NORMAL
             }
             refreshMode()
         } catch (e: Exception) {
-            android.util.Log.e("SilentModeRepo", "Failed to apply mode $mode: ${e.message}")
+            android.util.Log.e("SilentModeRepo", "Failed to apply mode $targetMode: ${e.message}")
         }
     }
 

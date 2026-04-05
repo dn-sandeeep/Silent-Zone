@@ -32,7 +32,8 @@ import com.sandeep.silentzone.ui.theme.*
 fun SilentScreen(
     accessGranted: Boolean,
     mode: RingerMode,
-    message: String?,
+    isFallback: Boolean,
+    operationState: com.sandeep.silentzone.OperationState,
     onGrantAccess: () -> Unit,
     setSilent: () -> Unit,
     setVibrate: () -> Unit,
@@ -44,7 +45,6 @@ fun SilentScreen(
     silentSsids: Set<String>,
     vibrateSsids: Set<String>,
     onDeleteSsid: (String) -> Unit,
-    wifiPermissionGranted: Boolean,
     currentWifiSsid: String?,
     locationZones: List<LocationZone>,
     onAddLocationZone: (RingerMode, Float) -> Unit,
@@ -162,6 +162,7 @@ fun SilentScreen(
                         0 -> DashboardScreen(
                             accessGranted = accessGranted,
                             mode = mode,
+                            isFallback = isFallback,
                             onGrantAccess = onGrantAccess,
                             setSilent = setSilent,
                             setVibrate = setVibrate,
@@ -181,6 +182,8 @@ fun SilentScreen(
                         )
                     }
                 }
+                // Operation status feedback (Top Layer)
+                OperationOverlay(state = operationState)
             }
         }
 
@@ -246,6 +249,7 @@ fun SilentScreen(
 fun DashboardScreen(
     accessGranted: Boolean,
     mode: RingerMode,
+    isFallback: Boolean,
     onGrantAccess: () -> Unit,
     setSilent: () -> Unit,
     setVibrate: () -> Unit,
@@ -258,14 +262,18 @@ fun DashboardScreen(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        PulseStatusHeader(mode = mode)
+        PulseStatusHeader(mode = mode, isFallback = isFallback)
 
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
             if (!accessGranted) {
-                PermissionWarningCard(onGrantAccess = onGrantAccess)
+                if (isFallback) {
+                    DndActionCard(onGrantAccess = onGrantAccess)
+                } else {
+                    PermissionWarningCard(onGrantAccess = onGrantAccess)
+                }
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

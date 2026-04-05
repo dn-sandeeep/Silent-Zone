@@ -51,7 +51,7 @@ class PermissionManager(private val activity: ComponentActivity) {
             }
         }
 
-    fun ensureLocationPermission(action: () -> Unit) {
+    fun requestLocationPermissions(action: () -> Unit) {
         val permissionsToRequest = mutableListOf<String>()
         if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             permissionsToRequest.add(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -68,6 +68,23 @@ class PermissionManager(private val activity: ComponentActivity) {
         if (permissionsToRequest.isNotEmpty()) {
             onPermissionGrantedAction = action
             requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+        } else {
+            action()
+        }
+    }
+
+    fun requestContactPermissions(action: () -> Unit) {
+        val permissions = arrayOf(
+            Manifest.permission.READ_CONTACTS,
+            Manifest.permission.READ_PHONE_STATE
+        )
+        val missing = permissions.filter { 
+            ContextCompat.checkSelfPermission(activity, it) != PackageManager.PERMISSION_GRANTED 
+        }
+        
+        if (missing.isNotEmpty()) {
+            onPermissionGrantedAction = action
+            requestPermissionLauncher.launch(missing.toTypedArray())
         } else {
             action()
         }
@@ -128,5 +145,10 @@ class PermissionManager(private val activity: ComponentActivity) {
             return ContextCompat.checkSelfPermission(activity, Manifest.permission.NEARBY_WIFI_DEVICES) == PackageManager.PERMISSION_GRANTED
         }
         return true
+    }
+
+    fun isDndAccessGranted(): Boolean {
+        val notifManager = activity.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        return notifManager.isNotificationPolicyAccessGranted
     }
 }
