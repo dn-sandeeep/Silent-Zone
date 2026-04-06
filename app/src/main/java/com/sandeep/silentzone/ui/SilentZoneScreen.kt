@@ -313,7 +313,7 @@ fun DashboardScreen(
         PulseStatusHeader(mode = mode, isFallback = isFallback)
 
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(10.dp),
             verticalArrangement = Arrangement.spacedBy(28.dp)
         ) {
             // New Stat Bubbles Row

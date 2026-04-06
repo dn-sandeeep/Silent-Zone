@@ -272,7 +272,7 @@ fun ModeToggleCard(
     Card(
         modifier = Modifier
             .height(110.dp)
-            .width(105.dp)
+            .width(150.dp)
             .scale(scale)
             .clickable { onClick() }
             .border(
@@ -701,15 +701,15 @@ fun StatBubble(
 ) {
     Box(
         modifier = Modifier
-            .width(105.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .width(155.dp)
+            .clip(RoundedCornerShape(20.dp))
             .background(color.copy(alpha = 0.3f))
-            .border(1.dp, color.copy(alpha = .8f), RoundedCornerShape(24.dp))
+            .border(1.dp, color.copy(alpha = .8f), RoundedCornerShape(20.dp))
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+            Icon(icon, null, tint = color, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = value,
