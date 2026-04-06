@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sandeep.silentzone.ImportantContact
@@ -272,7 +273,7 @@ fun ModeToggleCard(
     Card(
         modifier = Modifier
             .height(110.dp)
-            .width(150.dp)
+            .fillMaxWidth() // Flexible width
             .scale(scale)
             .clickable { onClick() }
             .border(
@@ -300,7 +301,9 @@ fun ModeToggleCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                color = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                color = if (isActive) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -859,7 +862,7 @@ fun StatBubble(
 ) {
     Box(
         modifier = Modifier
-            .width(155.dp)
+            .fillMaxWidth() // Flexible width
             .clip(RoundedCornerShape(20.dp))
             .background(color.copy(alpha = 0.3f))
             .border(1.dp, color.copy(alpha = .8f), RoundedCornerShape(20.dp))
@@ -873,12 +876,16 @@ fun StatBubble(
                 text = value,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = label,
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -918,6 +925,37 @@ fun ActivityLogItem(
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
+        }
+    }
+}
+
+@Composable
+fun MiniEmptyState(
+    icon: ImageVector,
+    title: String,
+    subtitle: String,
+    color: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+) {
+    GlassCard(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(color.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+            }
+            Column {
+                Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+            }
         }
     }
 }

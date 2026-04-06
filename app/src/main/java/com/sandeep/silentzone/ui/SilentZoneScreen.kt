@@ -367,26 +367,32 @@ fun DashboardScreen(
             // New Stat Bubbles Row
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                StatBubble(
-                    label = "Zones",
-                    value = zoneCount.toString(),
-                    icon = Icons.Default.Map,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                StatBubble(
-                    label = "Whitelist",
-                    value = contactCount.toString(),
-                    icon = Icons.Default.VerifiedUser,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                StatBubble(
-                    label = "Security",
-                    value = if (accessGranted) "On" else "Off",
-                    icon = if (accessGranted) Icons.Default.GppGood else Icons.Default.GppMaybe,
-                    color = if (accessGranted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
-                )
+                Box(modifier = Modifier.weight(1f)) {
+                    StatBubble(
+                        label = "Zones",
+                        value = zoneCount.toString(),
+                        icon = Icons.Default.Map,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    StatBubble(
+                        label = "Whitelist",
+                        value = contactCount.toString(),
+                        icon = Icons.Default.VerifiedUser,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+                Box(modifier = Modifier.weight(1f)) {
+                    StatBubble(
+                        label = "Security",
+                        value = if (accessGranted) "On" else "Off",
+                        icon = if (accessGranted) Icons.Default.GppGood else Icons.Default.GppMaybe,
+                        color = if (accessGranted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                    )
+                }
             }
 
             if (!accessGranted) {
@@ -401,29 +407,35 @@ fun DashboardScreen(
                 DashboardSectionHeader("Quick Controls")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    ModeToggleCard(
-                        title = "Normal",
-                        icon = Icons.Default.NotificationsActive,
-                        isActive = mode == RingerMode.NORMAL,
-                        onClick = setNormal,
-                        activeColor = MaterialTheme.colorScheme.primary
-                    )
-                    ModeToggleCard(
-                        title = "Vibrate",
-                        icon = Icons.Default.Vibration,
-                        isActive = mode == RingerMode.VIBRATE,
-                        onClick = setVibrate,
-                        activeColor = MaterialTheme.colorScheme.secondary
-                    )
-                    ModeToggleCard(
-                        title = "Silent",
-                        icon = Icons.Default.DoNotDisturbOn,
-                        isActive = mode == RingerMode.SILENT,
-                        onClick = setSilent,
-                        activeColor = MaterialTheme.colorScheme.error
-                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        ModeToggleCard(
+                            title = "Normal",
+                            icon = Icons.Default.NotificationsActive,
+                            isActive = mode == RingerMode.NORMAL,
+                            onClick = setNormal,
+                            activeColor = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        ModeToggleCard(
+                            title = "Vibrate",
+                            icon = Icons.Default.Vibration,
+                            isActive = mode == RingerMode.VIBRATE,
+                            onClick = setVibrate,
+                            activeColor = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        ModeToggleCard(
+                            title = "Silent",
+                            icon = Icons.Default.DoNotDisturbOn,
+                            isActive = mode == RingerMode.SILENT,
+                            onClick = setSilent,
+                            activeColor = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
 
@@ -518,21 +530,35 @@ fun ZonesScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        if (locationZones.isEmpty() && silentSsids.isEmpty() && vibrateSsids.isEmpty()) {
+        // Section 1: Geofence Areas
+        item { DashboardSectionHeader("Geofence Areas") }
+        if (locationZones.isEmpty()) {
             item {
-                EmptyStateText("No regions configured.")
+                MiniEmptyState(
+                    icon = Icons.Default.LocationOn,
+                    title = "No Locations Added",
+                    subtitle = "Tap the + button to create your first geofence.",
+                    color = MaterialTheme.colorScheme.primary
+                )
             }
-        }
-
-        if (locationZones.isNotEmpty()) {
-            item { DashboardSectionHeader("Geofence Areas") }
+        } else {
             items(locationZones) { zone ->
                 LocationZoneItemCard(zone = zone, onDelete = { onDeleteLocationZone(zone.id) })
             }
         }
 
-        if (silentSsids.isNotEmpty() || vibrateSsids.isNotEmpty()) {
-            item { DashboardSectionHeader("Wi-Fi Networks") }
+        // Section 2: Wi-Fi Networks
+        item { DashboardSectionHeader("Wi-Fi Networks") }
+        if (silentSsids.isEmpty() && vibrateSsids.isEmpty()) {
+            item {
+                MiniEmptyState(
+                    icon = Icons.Default.Wifi,
+                    title = "No Wi-Fi Zones",
+                    subtitle = "Add a network to silence your phone automatically.",
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
+        } else {
             items(silentSsids.toList()) { ssid ->
                 ZoneItemCard(ssid = ssid, onDelete = { onDeleteSsid(ssid) })
             }
