@@ -7,6 +7,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -173,36 +174,6 @@ fun MapSelectionScreen(
                     Icon(Icons.Default.Close, contentDescription = "Cancel")
                 }
             }
-        },
-        bottomBar = {
-            AnimatedVisibility(
-                visible = selectedZones.isNotEmpty(),
-                enter = slideInVertically { it } + fadeIn(),
-                exit = slideOutVertically { it } + fadeOut()
-            ) {
-
-                Button(
-                    onClick = { onZonesSelected(selectedZones) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp)
-                        .height(64.dp),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondary,
-                        contentColor = MaterialTheme.colorScheme.onSecondary
-                    )
-                ) {
-                    Icon(Icons.Default.Check, null)
-                    Spacer(modifier = Modifier.width(12.dp))
-                    Text(
-                        "Confirm ${selectedZones.size} Zones",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                }
-
-            }
         }
     ) { padding ->
         Box(
@@ -210,7 +181,6 @@ fun MapSelectionScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
-
             GoogleMap(
                 modifier = Modifier.fillMaxSize(),
                 cameraPositionState = cameraPositionState,
@@ -378,6 +348,44 @@ fun MapSelectionScreen(
                             style = MaterialTheme.typography.labelMedium.copy(
                                 fontWeight = FontWeight.ExtraBold,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        )
+                    }
+                }
+            }
+
+            // --- 3D FLOATING CONFIRM BUTTON ---
+            AnimatedVisibility(
+                visible = selectedZones.isNotEmpty(),
+                enter = slideInVertically { it / 2 } + fadeIn(),
+                exit = slideOutVertically { it / 2 } + fadeOut(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 20.dp) // Floating above map
+            ) {
+                Surface(
+                    onClick = { onZonesSelected(selectedZones) },
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary,
+                    shadowElevation = 12.dp,
+                    tonalElevation = 6.dp,
+                    modifier = Modifier
+                        .padding(horizontal = 32.dp)
+                        .height(50.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 20.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(Icons.Default.Check, null)
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "Confirm ${selectedZones.size} Zones",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp
                             )
                         )
                     }
