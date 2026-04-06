@@ -1,85 +1,42 @@
 package com.sandeep.silentzone.ui
 
+import android.location.Address
+import android.location.Geocoder
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.animation.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
-import com.google.maps.android.compose.Circle
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapType
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
+import com.google.maps.android.compose.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import android.location.Geocoder
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Layers
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.TextButton
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import java.util.Locale
 
 data class MapZone(val latLng: LatLng, val name: String, val radius: Float = 100f)
@@ -117,11 +74,63 @@ fun MapSelectionScreen(
 
     var mapType by remember { mutableStateOf(MapType.SATELLITE) }
     var searchQuery by remember { mutableStateOf("") }
+    var suggestions by remember { mutableStateOf<List<Address>>(emptyList()) }
+    var isSearching by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val geocoder = remember { Geocoder(context, Locale.getDefault()) }
+    val focusManager = LocalFocusManager.current
 
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(initialLocation, 17f)
+    }
+
+    // Search logic
+    fun performSearch(query: String) {
+        if (query.isBlank()) return
+        isSearching = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                val results = geocoder.getFromLocationName(query, 1)
+                withContext(Dispatchers.Main) {
+                    isSearching = false
+                    if (!results.isNullOrEmpty()) {
+                        val res = results[0]
+                        val pos = LatLng(res.latitude, res.longitude)
+                        cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(pos, 18f))
+                        tempLatLng = pos
+                        tempRadius = 150f
+                        tempName = res.featureName ?: res.thoroughfare ?: "Searched Zone"
+                        showBottomSheet = true
+                        searchQuery = ""
+                        suggestions = emptyList()
+                        focusManager.clearFocus()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { isSearching = false }
+            }
+        }
+    }
+
+    // Debounced suggestion logic
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.length < 3) {
+            suggestions = emptyList()
+            return@LaunchedEffect
+        }
+        delay(500)
+        isSearching = true
+        withContext(Dispatchers.IO) {
+            try {
+                val results = geocoder.getFromLocationName(searchQuery, 5)
+                withContext(Dispatchers.Main) {
+                    suggestions = results ?: emptyList()
+                    isSearching = false
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { isSearching = false }
+            }
+        }
     }
 
     fun reverseGeocode(latLng: LatLng) {
@@ -270,87 +279,152 @@ fun MapSelectionScreen(
                 }
             }
 
-            // Floating Search Bar & Glassmorphic Banner
+            // --- PREMIUM SLIM SEARCH BAR & SUGGESTIONS ---
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .animateContentSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Global Search Bar
+                // Slim Glassmorphic Search Bar
                 Surface(
                     tonalElevation = 8.dp,
                     shadowElevation = 12.dp,
-                    shape = RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(24.dp),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(48.dp) // Slimmer height
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     ) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        OutlinedTextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = { Text("Search for place...") },
-                            modifier = Modifier.weight(1f),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent,
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent
-                            ),
-                            singleLine = true,
-                            trailingIcon = {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = {
-                                        scope.launch(Dispatchers.IO) {
-                                            try {
-                                                val results =
-                                                    geocoder.getFromLocationName(searchQuery, 1)
-                                                if (!results.isNullOrEmpty()) {
-                                                    val res = results[0]
-                                                    val pos = LatLng(res.latitude, res.longitude)
-                                                    withContext(Dispatchers.Main) {
-                                                        cameraPositionState.animate(
-                                                            CameraUpdateFactory.newLatLngZoom(
-                                                                pos,
-                                                                18f
-                                                            )
-                                                        )
-                                                        tempLatLng = pos
-                                                        tempRadius = 150f
-                                                        tempName =
-                                                            res.featureName ?: "Searched Zone"
-                                                        showBottomSheet = true
-                                                        searchQuery = ""
-                                                    }
-                                                }
-                                            } catch (e: Exception) {
-                                            }
+                        if (isSearching) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.width(10.dp))
+                        
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                            if (searchQuery.isEmpty()) {
+                                Text(
+                                    "Search location...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                                )
+                            }
+                            BasicTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(onSearch = { performSearch(searchQuery) })
+                            )
+                        }
+
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { 
+                                    searchQuery = ""
+                                    suggestions = emptyList()
+                                },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Suggestions List
+                AnimatedVisibility(
+                    visible = suggestions.isNotEmpty(),
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut()
+                ) {
+                    Surface(
+                        tonalElevation = 4.dp,
+                        shadowElevation = 8.dp,
+                        shape = RoundedCornerShape(16.dp),
+                        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .fillMaxWidth()
+                    ) {
+                        LazyColumn(
+                            modifier = Modifier.heightIn(max = 240.dp)
+                        ) {
+                            items(suggestions) { address ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            val pos = LatLng(address.latitude, address.longitude)
+                                            cameraPositionState.position = CameraPosition.fromLatLngZoom(pos, 18f)
+                                            tempLatLng = pos
+                                            tempRadius = 150f
+                                            tempName = address.featureName ?: address.thoroughfare ?: "Found Location"
+                                            showBottomSheet = true
+                                            searchQuery = ""
+                                            suggestions = emptyList()
+                                            focusManager.clearFocus()
                                         }
-                                    }) {
-                                        Icon(Icons.Default.Check, null)
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = address.featureName ?: "Unknown Place",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    val subtitle = address.getAddressLine(0) ?: ""
+                                    if (subtitle.isNotEmpty()) {
+                                        Text(
+                                            text = subtitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
                                     }
                                 }
+                                if (suggestions.last() != address) {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 16.dp),
+                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                    )
+                                }
                             }
-                        )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 AnimatedVisibility(
-                    visible = !showBottomSheet,
+                    visible = !showBottomSheet && suggestions.isEmpty(),
                     enter = fadeIn(),
                     exit = fadeOut()
                 ) {
