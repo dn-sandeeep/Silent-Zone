@@ -73,9 +73,11 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import android.location.Geocoder
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import java.util.Locale
@@ -93,17 +95,25 @@ fun MapSelectionScreen(
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
 
-    // Handle system back button
-    BackHandler {
-        onCancel()
-    }
-
     // Bottom Sheet State
     val sheetState = rememberModalBottomSheetState()
     var showBottomSheet by remember { mutableStateOf(false) }
     var tempLatLng by remember { mutableStateOf<LatLng?>(null) }
     var tempName by remember { mutableStateOf("") }
     var tempRadius by remember { mutableFloatStateOf(100f) }
+    var editingZone by remember { mutableStateOf<MapZone?>(null) }
+
+    // Handle system back button
+    BackHandler {
+        if (showBottomSheet) {
+            showBottomSheet = false
+            editingZone = null
+            tempLatLng = null
+            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+        } else {
+            onCancel()
+        }
+    }
 
     var mapType by remember { mutableStateOf(MapType.SATELLITE) }
     var searchQuery by remember { mutableStateOf("") }
@@ -238,7 +248,15 @@ fun MapSelectionScreen(
                     Marker(
                         state = MarkerState(position = zone.latLng),
                         title = zone.name,
-                        snippet = "Radius: ${zone.radius.toInt()}m"
+                        snippet = "Radius: ${zone.radius.toInt()}m",
+                        onClick = {
+                            editingZone = zone
+                            tempLatLng = zone.latLng
+                            tempName = zone.name
+                            tempRadius = zone.radius
+                            showBottomSheet = true
+                            true // consume click
+                        }
                     )
 
                     // Circle to visualize the geofence
@@ -397,7 +415,10 @@ fun MapSelectionScreen(
     // Modern Bottom Sheet for Zone Configuration
     if (showBottomSheet && tempLatLng != null) {
         ModalBottomSheet(
-            onDismissRequest = { showBottomSheet = false },
+            onDismissRequest = { 
+                showBottomSheet = false
+                editingZone = null
+            },
             sheetState = sheetState,
             dragHandle = { BottomSheetDefaults.DragHandle() },
             containerColor = MaterialTheme.colorScheme.surface,
@@ -408,11 +429,37 @@ fun MapSelectionScreen(
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 48.dp)
             ) {
-                Text(
-                    "Configure Smart Zone",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        if (editingZone == null) "Configure Smart Zone" else "Edit Smart Zone",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    if (editingZone == null) {
+                        TextButton(onClick = {
+                            showBottomSheet = false
+                            tempLatLng = null
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }) {
+                            Text("Discard", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        IconButton(onClick = {
+                            selectedZones.remove(editingZone)
+                            showBottomSheet = false
+                            editingZone = null
+                            tempLatLng = null
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        }) {
+                            Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -486,11 +533,22 @@ fun MapSelectionScreen(
 
                 Button(
                     onClick = {
-                        val name =
-                            if (tempName.isBlank()) "Zone ${selectedZones.size + 1}" else tempName
-                        selectedZones.add(MapZone(tempLatLng!!, name, tempRadius))
+                        val name = if (tempName.isBlank()) "Zone ${selectedZones.size + 1}" else tempName
+                        val newZone = MapZone(tempLatLng!!, name, tempRadius)
+                        
+                        if (editingZone != null) {
+                            val index = selectedZones.indexOf(editingZone)
+                            if (index != -1) {
+                                selectedZones[index] = newZone
+                            }
+                        } else {
+                            selectedZones.add(newZone)
+                        }
+                        
                         showBottomSheet = false
+                        editingZone = null
                         tempLatLng = null
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
@@ -500,7 +558,10 @@ fun MapSelectionScreen(
                         contentColor = MaterialTheme.colorScheme.onBackground
                     )
                 ) {
-                    Text("Add Smart Zone", fontSize = 16.sp)
+                    Text(
+                        if (editingZone == null) "Add Smart Zone" else "Update Zone", 
+                        fontSize = 16.sp
+                    )
                 }
             }
         }
