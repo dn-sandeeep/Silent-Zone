@@ -106,13 +106,21 @@ SilentZone requires the following for its automation:
 
 ---
 
+## 🚀 Roadmap & Future Plans
+
+SilentZone aims to go beyond basic automation. We are planning to implement several "Agentic" features to make the app a true personal assistant:
+
+- **📡 WiFi Proximity (Signal-Based)**: Trigger silent mode as soon as an office/university WiFi signal is detected, *before* your device actually connects.
+- **🔊 Adaptive Smart Volume**: Use the device's microphone to sense ambient noise levels. Automatically increase ring volume in loud environments and soften it in quiet libraries.
+- **✉️ NLP Notification Filtering**: Local AI analysis of notification content. Silence everything except messages containing "Urgent", "OTP", or "Emergency".
+- **🎒 Pocket-Aware Haptics**: Detect if the phone is in a bag or pocket using proximity and light sensors. Switch to high-intensity "Burst Vibration" to ensure calls aren't missed.
+- **🎬 App-Based Silence (Theater Mode)**: Automatically mute media volume when specific entertainment apps (YouTube, Netflix) are opened in public environments.
+- **🚪 Exit Confirmation**: When leaving a "Silent Zone," the app will ask for confirmation before restoring the volume to prevent embarrassing loud-ring moments.
+- **🚆 Commute Intelligence**: Motion-based social media muting. If traveling at high speeds, social notifications are muted to keep you focused.
+
+---
+
 ## 🤝 Contributing
-Contributions are welcome!
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
 
 ---
 <p align="center">Made with ❤️ for a quieter world.</p>

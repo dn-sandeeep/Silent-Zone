@@ -15,6 +15,9 @@ interface SilentZoneDao {
     @Query("DELETE FROM location_zones WHERE id = :id")
     suspend fun deleteLocationZoneById(id: String)
 
+    @Query("SELECT * FROM location_zones WHERE id = :id")
+    suspend fun getLocationZoneById(id: String): LocationZoneEntity?
+
     // Important Contacts
     @Query("SELECT * FROM important_contacts")
     fun getAllImportantContacts(): Flow<List<ImportantContactEntity>>

@@ -62,17 +62,53 @@ class SilentModeRepository @Inject constructor(
 
     companion object {
         private const val PREF_KEY_SAVED_MODE = "saved_ringer_mode"
-        private const val PREF_KEY_ACTIVE_WIFI_SSID = "active_wifi_ssid"
-        private const val PREF_KEY_ACTIVE_LOCATION_ID = "active_location_id"
+        private const val PREF_KEY_ACTIVE_WIFI_SET = "active_wifi_set"
+        private const val PREF_KEY_ACTIVE_LOCATION_SET = "active_location_set"
+    }
+
+    private fun getActiveWifiSet(): Set<String> = prefs.getStringSet(PREF_KEY_ACTIVE_WIFI_SET, emptySet()) ?: emptySet()
+    private fun getActiveLocationSet(): Set<String> = prefs.getStringSet(PREF_KEY_ACTIVE_LOCATION_SET, emptySet()) ?: emptySet()
+
+    private fun addToWifiSet(ssid: String) {
+        val current = getActiveWifiSet().toMutableSet()
+        current.add(ssid)
+        prefs.edit().putStringSet(PREF_KEY_ACTIVE_WIFI_SET, current).apply()
+    }
+
+    private fun removeFromWifiSet(ssid: String) {
+        val current = getActiveWifiSet().toMutableSet()
+        current.remove(ssid)
+        prefs.edit().putStringSet(PREF_KEY_ACTIVE_WIFI_SET, current).apply()
+    }
+
+    private fun addToLocationSet(id: String) {
+        val current = getActiveLocationSet().toMutableSet()
+        current.add(id)
+        prefs.edit().putStringSet(PREF_KEY_ACTIVE_LOCATION_SET, current).apply()
+    }
+
+    private fun removeFromLocationSet(id: String) {
+        val current = getActiveLocationSet().toMutableSet()
+        current.remove(id)
+        prefs.edit().putStringSet(PREF_KEY_ACTIVE_LOCATION_SET, current).apply()
     }
 
     @android.annotation.SuppressLint("MissingPermission")
     fun getCurrentLocation(onLocationResult: (Double, Double) -> Unit, onError: () -> Unit) {
-        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+        // High accuracy request instead of just lastLocation
+        val priority = com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY
+        fusedLocationClient.getCurrentLocation(priority, null).addOnSuccessListener { location ->
              if (location != null) {
                  onLocationResult(location.latitude, location.longitude)
              } else {
-                 onError()
+                 // Fallback to lastLocation if fresh one fails
+                 fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc ->
+                     if (lastLoc != null) {
+                         onLocationResult(lastLoc.latitude, lastLoc.longitude)
+                     } else {
+                         onError()
+                     }
+                 }.addOnFailureListener { onError() }
              }
         }.addOnFailureListener {
             onError()
@@ -147,62 +183,71 @@ class SilentModeRepository @Inject constructor(
 
     suspend fun onWifiChanged(currentSsid: String?) {
         val zones = getWifiZonesFlow().first()
-        val activeWifiSsid = prefs.getString(PREF_KEY_ACTIVE_WIFI_SSID, null)
+        val activeWifiSet = getActiveWifiSet()
 
         if (currentSsid != null) {
             val zone = zones.find { it.ssid == currentSsid }
             if (zone != null) {
-                if (activeWifiSsid != currentSsid) {
+                if (!activeWifiSet.contains(currentSsid)) {
                     saveOriginalMode()
-                    prefs.edit().putString(PREF_KEY_ACTIVE_WIFI_SSID, currentSsid).apply()
+                    addToWifiSet(currentSsid)
                     applyMode(zone.mode)
                 }
-            } else if (activeWifiSsid != null) {
-                // Left a WiFi zone
-                prefs.edit().remove(PREF_KEY_ACTIVE_WIFI_SSID).apply()
+            } else if (activeWifiSet.isNotEmpty()) {
+                // Not in a saved zone anymore
+                activeWifiSet.forEach { removeFromWifiSet(it) }
                 checkAndRestore()
             }
-        } else if (activeWifiSsid != null) {
+        } else if (activeWifiSet.isNotEmpty()) {
             // Disconnected from WiFi
-            prefs.edit().remove(PREF_KEY_ACTIVE_WIFI_SSID).apply()
+            activeWifiSet.forEach { removeFromWifiSet(it) }
             checkAndRestore()
         }
     }
 
     suspend fun onLocationTransition(id: String, isEntering: Boolean) {
-        val zones = getLocationZones()
-        val zone = zones.find { it.id == id } ?: return
-        val activeLocationId = prefs.getString(PREF_KEY_ACTIVE_LOCATION_ID, null)
+        // Use direct DB lookup to avoid race conditions with INITIAL_TRIGGER
+        val entity = dao.getLocationZoneById(id) ?: return
+        val zone = entity.toDomain()
+        
+        val activeLocationSet = getActiveLocationSet()
 
         if (isEntering) {
             saveOriginalMode()
-            prefs.edit().putString(PREF_KEY_ACTIVE_LOCATION_ID, id).apply()
+            addToLocationSet(id)
             applyMode(zone.mode)
-        } else if (activeLocationId == id) {
-            prefs.edit().remove(PREF_KEY_ACTIVE_LOCATION_ID).apply()
+        } else if (activeLocationSet.contains(id)) {
+            removeFromLocationSet(id)
             checkAndRestore()
         }
     }
 
     private suspend fun checkAndRestore() {
-        val activeWifi = prefs.getString(PREF_KEY_ACTIVE_WIFI_SSID, null)
-        val activeLoc = prefs.getString(PREF_KEY_ACTIVE_LOCATION_ID, null)
+        val activeWifiSet = getActiveWifiSet()
+        val activeLocationSet = getActiveLocationSet()
 
-        if (activeWifi == null && activeLoc == null) {
+        if (activeWifiSet.isEmpty() && activeLocationSet.isEmpty()) {
             restoreOriginalMode()
             // If still no mode applied (e.g. no original mode saved), default to NORMAL
             if (getCurrentMode() != RingerMode.NORMAL && prefs.getInt(PREF_KEY_SAVED_MODE, -1) == -1) {
                 applyMode(RingerMode.NORMAL)
             }
         } else {
-            // Still in another zone, re-apply that zone's mode
-            if (activeWifi != null) {
-                val zone = getWifiZonesFlow().first().find { it.ssid == activeWifi }
-                zone?.let { applyMode(it.mode) }
-            } else if (activeLoc != null) {
-                val zone = getLocationZones().find { it.id == activeLoc }
-                zone?.let { applyMode(it.mode) }
-            }
+            // Priority: Apply mode from the most recently triggered zone (conceptually)
+            // Or simply any of the active modes (usually SILENT is the goal)
+            val wifiZone = if (activeWifiSet.isNotEmpty()) {
+                val ssid = activeWifiSet.first()
+                getWifiZonesFlow().first().find { it.ssid == ssid }
+            } else null
+            
+            val locZone = if (activeLocationSet.isNotEmpty()) {
+                val id = activeLocationSet.first()
+                getLocationZones().find { it.id == id }
+            } else null
+
+            // Apply mode from whatever is active (preferring location if both exists)
+            val targetMode = locZone?.mode ?: wifiZone?.mode ?: RingerMode.NORMAL
+            applyMode(targetMode)
         }
     }
     
@@ -225,8 +270,8 @@ class SilentModeRepository @Inject constructor(
     suspend fun removeLocationZone(id: String) {
         dao.deleteLocationZoneById(id)
         geofenceManager.removeGeofence(id)
-        if (prefs.getString(PREF_KEY_ACTIVE_LOCATION_ID, null) == id) {
-            prefs.edit().remove(PREF_KEY_ACTIVE_LOCATION_ID).apply()
+        if (getActiveLocationSet().contains(id)) {
+            removeFromLocationSet(id)
             checkAndRestore()
         }
     }
@@ -244,8 +289,8 @@ class SilentModeRepository @Inject constructor(
 
     suspend fun removeWifiZone(ssid: String) {
         dao.deleteWifiZoneBySsid(ssid)
-        if (prefs.getString(PREF_KEY_ACTIVE_WIFI_SSID, null) == ssid) {
-            prefs.edit().remove(PREF_KEY_ACTIVE_WIFI_SSID).apply()
+        if (getActiveWifiSet().contains(ssid)) {
+            removeFromWifiSet(ssid)
             checkAndRestore()
         }
     }

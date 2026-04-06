@@ -145,16 +145,12 @@ class SilentModeViewModel @Inject constructor(
         }
     }
 
-    fun addCurrentLocationZone(mode: RingerMode, radius: Float = 100f) {
+    fun addCurrentLocationZone(mode: RingerMode, radius: Float = 50f) {
         _operationState.value = OperationState.Loading
         repo.getCurrentLocation(
             onLocationResult = { lat, lon ->
                 addLocationZone(lat, lon, "Zone ${locationZones.value.size + 1}", mode, radius)
-                _operationState.value = OperationState.Success("Location Zone Added!")
-                viewModelScope.launch {
-                    delay(2000)
-                    _operationState.value = OperationState.Idle
-                }
+                // Note: success state is handled inside addLocationZone now to ensure proper sequencing
             },
             onError = {
                 Log.e("SilentModeViewModel", "Could not get current location")
@@ -167,17 +163,26 @@ class SilentModeViewModel @Inject constructor(
         )
     }
 
-    fun addLocationZone(latitude: Double, longitude: Double, name: String, mode: RingerMode, radius: Float = 100f) {
+    fun addLocationZone(latitude: Double, longitude: Double, name: String, mode: RingerMode, radius: Float = 50f) {
         viewModelScope.launch {
-            val zone = LocationZone(
-                id = java.util.UUID.randomUUID().toString(),
-                latitude = latitude,
-                longitude = longitude,
-                name = name,
-                radius = radius,
-                mode = mode
-            )
-            repo.addLocationZone(zone)
+            try {
+                val zone = LocationZone(
+                    id = java.util.UUID.randomUUID().toString(),
+                    latitude = latitude,
+                    longitude = longitude,
+                    name = name,
+                    radius = radius,
+                    mode = mode
+                )
+                repo.addLocationZone(zone)
+                _operationState.value = OperationState.Success("Location Zone Added!")
+                delay(2000)
+                _operationState.value = OperationState.Idle
+            } catch (e: Exception) {
+                _operationState.value = OperationState.Error("Failed to add zone: ${e.message}")
+                delay(3000)
+                _operationState.value = OperationState.Idle
+            }
         }
     }
 
