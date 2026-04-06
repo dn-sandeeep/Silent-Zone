@@ -44,7 +44,6 @@ import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -282,9 +281,9 @@ fun SilentScreen(
             }
         }
 
-        // Dialogs
+        // Bottom Sheets (Replaced Dialogs)
         if (showAddTypeDialog) {
-            AddZoneTypeDialog(
+            AddZoneTypeBottomSheet(
                 onCurrentLocation = { 
                     radiusSource = RadiusSource.CurrentLocation
                     showRadiusDialog = true
@@ -298,7 +297,7 @@ fun SilentScreen(
         }
 
         if (showRadiusDialog) {
-            RadiusSelectionDialog(
+            RadiusSelectionBottomSheet(
                 onRadiusSelected = { radius ->
                     if (radiusSource == RadiusSource.CurrentLocation) {
                         onAddLocationZone(RingerMode.SILENT, radius)
@@ -314,7 +313,7 @@ fun SilentScreen(
         }
 
         if (showWifiSelection && availableSsidList.isNotEmpty()) {
-            SsidSelectionDialog(
+            SsidSelectionBottomSheet(
                 ssids = availableSsidList,
                 onSsidSelected = { ssid ->
                     pendingSsid = ssid
@@ -328,7 +327,7 @@ fun SilentScreen(
         }
 
         if (pendingSsid != null) {
-            ModeSelectionDialog(
+            ModeSelectionBottomSheet(
                 ssid = pendingSsid!!,
                 onModeSelected = { m ->
                     onSelectedSsid(pendingSsid!!, m)
@@ -570,59 +569,6 @@ fun ContactsScreen(
     }
 }
 
-@Composable
-fun AddZoneTypeDialog(
-    onCurrentLocation: () -> Unit,
-    onSelectMap: () -> Unit,
-    onWifi: () -> Unit,
-    onDismiss: () -> Unit,
-    onRequestPermission: (() -> Unit) -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Automate Mode", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(
-                    onClick = { onRequestPermission { onCurrentLocation() } },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Icon(Icons.Default.MyLocation, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text("Current Location", color = MaterialTheme.colorScheme.onSurface)
-                }
-                Button(
-                    onClick = { onRequestPermission { onSelectMap() } },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Icon(Icons.Default.Map, null, tint = MaterialTheme.colorScheme.secondary)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text("Pick on Map", color = MaterialTheme.colorScheme.onSurface)
-                }
-                Button(
-                    onClick = { onRequestPermission { onWifi() } },
-                    modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Text("Connect to WiFi", color = MaterialTheme.colorScheme.onSurface)
-                }
-            }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("CANCEL", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold) }
-        },
-        shape = RoundedCornerShape(32.dp),
-        containerColor = MaterialTheme.colorScheme.surface
-    )
-}
 
 @Composable
 fun EmptyStateText(text: String) {

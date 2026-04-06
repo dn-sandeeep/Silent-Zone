@@ -468,60 +468,81 @@ fun PermissionWarningCard(onGrantAccess: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SsidSelectionDialog(
+fun SsidSelectionBottomSheet(
     ssids: List<String>,
     onSsidSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = {
-            Text("Nearby Networks", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
-        },
-        text = {
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 48.dp)
+        ) {
+            Text(
+                "Nearby Networks",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 350.dp)
+                    .heightIn(max = 400.dp)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 ssids.forEach { ssid ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f), RoundedCornerShape(16.dp))
+                            .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f), RoundedCornerShape(20.dp))
                             .clickable { onSsidSelected(ssid) }
-                            .padding(16.dp),
+                            .padding(20.dp),
                         horizontalArrangement = Arrangement.spacedBy(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box(
-                            modifier = Modifier.size(32.dp).background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f), CircleShape),
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(16.dp))
+                            Icon(
+                                Icons.Default.Wifi, 
+                                null, 
+                                tint = MaterialTheme.colorScheme.secondary, 
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
-                        Text(ssid, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                        Text(
+                            ssid, 
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface, 
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
                 if (ssids.isEmpty()) {
-                    Text("Searching for networks...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
+                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
+                    }
                 }
             }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
-            }
-        },
-        shape = RoundedCornerShape(32.dp),
-        containerColor = MaterialTheme.colorScheme.surface
-    )
+        }
+    }
 }
 
 @Composable
@@ -563,92 +584,229 @@ fun ZoneItemCard(ssid: String, onDelete: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ModeSelectionDialog(
+fun ModeSelectionBottomSheet(
     ssid: String,
     onModeSelected: (RingerMode) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(32.dp),
-        title = { Text("Configure Zone", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
-        text = {
-            Column {
-                Text("Switch mode when connected to $ssid:", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Button(
-                        onClick = { onModeSelected(RingerMode.SILENT) },
-                        modifier = Modifier.weight(1f).height(60.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Text("SILENT", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onError)
-                    }
-                    Button(
-                        onClick = { onModeSelected(RingerMode.VIBRATE) },
-                        modifier = Modifier.weight(1f).height(60.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Text("VIBRATE", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondary)
-                    }
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 48.dp)
+        ) {
+            Text(
+                "Configure Zone",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                "Switch mode when connected to $ssid",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(), 
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Button(
+                    onClick = { onModeSelected(RingerMode.SILENT) },
+                    modifier = Modifier.weight(1f).height(64.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.Default.DoNotDisturbOn, null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("SILENT", fontWeight = FontWeight.Black)
+                }
+                Button(
+                    onClick = { onModeSelected(RingerMode.VIBRATE) },
+                    modifier = Modifier.weight(1f).height(64.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Icon(Icons.Default.Vibration, null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("VIBRATE", fontWeight = FontWeight.Black)
                 }
             }
-        },
-        confirmButton = {},
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("CANCEL", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f))
-            }
         }
-    )
+    }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RadiusSelectionDialog(
+fun RadiusSelectionBottomSheet(
     onRadiusSelected: (Float) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var radius by remember { mutableStateOf(100f) }
+    var radius by remember { mutableFloatStateOf(100f) }
 
-    AlertDialog(
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(32.dp),
-        title = { Text("Search Radius", fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface) },
-        text = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                    Text("${radius.toInt()}m", style = MaterialTheme.typography.displaySmall, color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Black)
-                }
-                Spacer(modifier = Modifier.height(24.dp))
-                Slider(
-                    value = radius,
-                    onValueChange = { radius = it },
-                    valueRange = 50f..1000f,
-                    steps = 18,
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.secondary,
-                        activeTrackColor = MaterialTheme.colorScheme.secondary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                    )
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 48.dp)
+        ) {
+            Text(
+                "Select Radius",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text(
+                    "${radius.toInt()}m", 
+                    style = MaterialTheme.typography.displaySmall, 
+                    color = MaterialTheme.colorScheme.secondary, 
+                    fontWeight = FontWeight.Black
                 )
             }
-        },
-        confirmButton = {
+            
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            Slider(
+                value = radius,
+                onValueChange = { radius = it },
+                valueRange = 50f..1000f,
+                steps = 18,
+                colors = SliderDefaults.colors(
+                    thumbColor = MaterialTheme.colorScheme.secondary,
+                    activeTrackColor = MaterialTheme.colorScheme.secondary,
+                    inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                )
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
             Button(
                 onClick = { onRadiusSelected(radius) },
+                modifier = Modifier.fillMaxWidth().height(60.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(20.dp)
             ) {
-                Text("SET RADIUS", color = MaterialTheme.colorScheme.onSecondary, fontWeight = FontWeight.Bold)
+                Text("SET RADIUS", fontWeight = FontWeight.Black)
             }
         }
-    )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddZoneTypeBottomSheet(
+    onCurrentLocation: () -> Unit,
+    onSelectMap: () -> Unit,
+    onWifi: () -> Unit,
+    onDismiss: () -> Unit,
+    onRequestPermission: (() -> Unit) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 48.dp)
+        ) {
+            Text(
+                "Automate Mode",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                "Choose a trigger type to silence your phone",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                AddTypeMenuItem(
+                    title = "Current Location",
+                    subtitle = "Create a geofence around here",
+                    icon = Icons.Default.MyLocation,
+                    color = MaterialTheme.colorScheme.primary,
+                    onClick = { onRequestPermission { onCurrentLocation() } }
+                )
+                AddTypeMenuItem(
+                    title = "Pick on Map",
+                    subtitle = "Search or select any globally",
+                    icon = Icons.Default.Map,
+                    color = MaterialTheme.colorScheme.secondary,
+                    onClick = { onRequestPermission { onSelectMap() } }
+                )
+                AddTypeMenuItem(
+                    title = "Connect to WiFi",
+                    subtitle = "Silence when SSID matches",
+                    icon = Icons.Default.Wifi,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    onClick = { onRequestPermission { onWifi() } }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddTypeMenuItem(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .background(color.copy(alpha = 0.08f))
+            .clickable { onClick() }
+            .padding(20.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(color.copy(alpha = 0.15f), RoundedCornerShape(14.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = color)
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+        }
+        Icon(
+            Icons.Default.ChevronRight, 
+            null, 
+            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+        )
+    }
 }
 
 @Composable
