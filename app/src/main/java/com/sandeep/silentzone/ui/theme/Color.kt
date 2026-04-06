@@ -19,16 +19,3 @@ val ChromeRedDark = Color(0xFFF28B82)
 val DarkBg = Color(0xFF202124)
 val SurfaceDark = Color(0xFF292A2D)
 
-// Glass Effects
-val GlassWhite = Color(0x1AFFFFFF)
-val GlassDark = Color(0x1A000000)
-val GlassBorder = Color(0x33FFFFFF)
-
-// Legacy Support
-val DeepSpace = DarkBg
-val MidnightBlue = SurfaceDark
-val Slate800 = Color(0xFF3C4043)
-val IndigoAccent = ChromeBlueDark
-val CyanAccent = ChromeYellowDark
-val TealAccent = ChromeGreenDark
-val RoseAccent = ChromeRedDark
