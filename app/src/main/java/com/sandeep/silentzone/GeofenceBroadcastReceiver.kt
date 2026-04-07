@@ -18,21 +18,30 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
     @Inject
     lateinit var repository: SilentModeRepository
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override fun onReceive(context: Context, intent: Intent) {
-        val geofencingEvent = GeofencingEvent.fromIntent(intent) ?: return
+        val geofencingEvent = GeofencingEvent.fromIntent(intent) ?: run {
+            android.util.Log.e("GeofenceReceiver", "Received intent with no geofencing event")
+            return
+        }
 
         if (geofencingEvent.hasError()) {
+            android.util.Log.e("GeofenceReceiver", "GeofencingEvent error: ${geofencingEvent.errorCode}")
             return
         }
 
         val geofenceTransition = geofencingEvent.geofenceTransition
+        android.util.Log.d("GeofenceReceiver", "Transition detected: $geofenceTransition")
 
         if (geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER ||
             geofenceTransition == Geofence.GEOFENCE_TRANSITION_EXIT
         ) {
-            val triggeringGeofences = geofencingEvent.triggeringGeofences ?: return
+            val triggeringGeofences = geofencingEvent.triggeringGeofences ?: run {
+                android.util.Log.e("GeofenceReceiver", "No triggering geofences found")
+                return
+            }
+            
             val pendingResult = goAsync()
             scope.launch {
                 try {
@@ -42,7 +51,10 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                             geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER
                         )
                     }
+                } catch (e: Exception) {
+                    android.util.Log.e("GeofenceReceiver", "Error processing geofences: ${e.message}")
                 } finally {
+                    android.util.Log.d("GeofenceReceiver", "Geofence processing complete")
                     pendingResult.finish()
                 }
             }

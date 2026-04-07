@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,6 +46,7 @@ class SilentModeRepository @Inject constructor(
     private val dao: SilentZoneDao,
     private val geofenceManager: SilentZoneGeofenceManager
 ) {
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val audio: AudioManager =
         appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     
@@ -248,20 +250,28 @@ class SilentModeRepository @Inject constructor(
     }
 
     suspend fun onLocationTransition(id: String, isEntering: Boolean) {
+        android.util.Log.d("SilentModeRepo", "Location Transition: ID=$id, Entering=$isEntering")
         if (id.startsWith("wifi_proxy_")) {
             val ssid = id.removePrefix("wifi_proxy_")
             if (isEntering) {
                 android.util.Log.d("SilentModeRepo", "Entering WiFi Proxy for $ssid. Starting scan service.")
-                startMonitoringService("WiFi: $ssid")
+                try {
+                    startMonitoringService("WiFi: $ssid")
+                } catch (e: Exception) {
+                    android.util.Log.e("SilentModeRepo", "Failed to start monitoring service: ${e.message}")
+                }
             } else {
-                android.util.Log.d("SilentModeRepo", "Exiting WiFi Proxy for $ssid. Stopping service.")
+                android.util.Log.d("SilentModeRepo", "Exiting WiFi Proxy for $ssid. Checking restoration.")
                 checkAndRestore()
             }
             return
         }
 
         // Use direct DB lookup to avoid race conditions with INITIAL_TRIGGER
-        val entity = dao.getLocationZoneById(id) ?: return
+        val entity = dao.getLocationZoneById(id) ?: run {
+            android.util.Log.e("SilentModeRepo", "Zone ID $id not found in DB")
+            return
+        }
         val zone = entity.toDomain()
         
         val activeLocationSet = getActiveLocationSet()
@@ -270,10 +280,53 @@ class SilentModeRepository @Inject constructor(
             saveOriginalMode()
             addToLocationSet(id)
             applyMode(zone.mode)
-            startMonitoringService(zone.name)
+            try {
+                startMonitoringService(zone.name)
+            } catch (e: Exception) {
+                android.util.Log.e("SilentModeRepo", "Failed to start monitoring service for ${zone.name}: ${e.message}")
+            }
         } else if (activeLocationSet.contains(id)) {
             removeFromLocationSet(id)
             checkAndRestore()
+        }
+    }
+
+    suspend fun syncCurrentState(currentSsid: String?) {
+        android.util.Log.d("SilentModeRepo", "Syncing current state (SSID: $currentSsid)...")
+        
+        // 1. WiFi Sync
+        onWifiChanged(currentSsid)
+        
+        // 2. Location Sync (check if we are in any saved geofence zone)
+        // Note: Play Services handles Geofencing, but we can do a manual backup check
+        // against last known location to be safe.
+        fusedLocationClient.lastLocation.addOnSuccessListener { location ->
+            if (location != null) {
+                scope.launch {
+                    val zones = getLocationZones()
+                    val activeLocationSet = getActiveLocationSet().toMutableSet()
+                    
+                    zones.forEach { zone ->
+                        val results = FloatArray(1)
+                        android.location.Location.distanceBetween(
+                            location.latitude, location.longitude,
+                            zone.latitude, zone.longitude,
+                            results
+                        )
+                        val isInside = results[0] <= zone.radius
+                        
+                        if (isInside && !activeLocationSet.contains(zone.id)) {
+                            android.util.Log.d("SilentModeRepo", "Sync: Found inside zone ${zone.name}")
+                            saveOriginalMode()
+                            addToLocationSet(zone.id)
+                            applyMode(zone.mode)
+                            try {
+                                startMonitoringService(zone.name)
+                            } catch (e: Exception) {}
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -389,6 +442,37 @@ class SilentModeRepository @Inject constructor(
 
     private fun normalizePhoneNumber(phone: String): String {
         return phone.replace(Regex("[^0-9+]"), "")
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    fun getCurrentSsid(): String? {
+        return try {
+            val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            
+            // Priority 1: ConnectionInfo
+            @Suppress("DEPRECATION")
+            val info = wifiManager.connectionInfo
+            if (info != null && info.ssid != null && info.ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
+                return info.ssid.trim('"')
+            }
+            
+            // Priority 2: NetworkCapabilities
+            val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val network = cm.activeNetwork
+            val capabilities = cm.getNetworkCapabilities(network)
+            val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
+            if (wifiInfo != null && wifiInfo.ssid != null && wifiInfo.ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
+                return wifiInfo.ssid.trim('"')
+            }
+            
+            null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    suspend fun syncCurrentState() {
+        syncCurrentState(getCurrentSsid())
     }
 
     // Mappers
