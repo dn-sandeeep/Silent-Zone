@@ -2,6 +2,7 @@ package com.sandeep.silentzone.ui
 
 import android.location.Address
 import android.location.Geocoder
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
@@ -90,21 +91,35 @@ fun MapSelectionScreen(
         isSearching = true
         scope.launch(Dispatchers.IO) {
             try {
-                val results = geocoder.getFromLocationName(query, 1)
-                withContext(Dispatchers.Main) {
-                    isSearching = false
-                    if (!results.isNullOrEmpty()) {
-                        val res = results[0]
-                        val pos = LatLng(res.latitude, res.longitude)
-                        cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(pos, 18f))
-                        tempLatLng = pos
-                        tempRadius = 150f
-                        tempName = res.featureName ?: res.thoroughfare ?: "Searched Zone"
-                        showBottomSheet = true
-                        searchQuery = ""
-                        suggestions = emptyList()
-                        focusManager.clearFocus()
+                val onResults: (List<Address>?) -> Unit = { results ->
+                    scope.launch(Dispatchers.Main) {
+                        isSearching = false
+                        if (!results.isNullOrEmpty()) {
+                            val res = results[0]
+                            val pos = LatLng(res.latitude, res.longitude)
+                            cameraPositionState.animate(CameraUpdateFactory.newLatLngZoom(pos, 18f))
+                            tempLatLng = pos
+                            tempRadius = 150f
+                            tempName = res.featureName ?: res.thoroughfare ?: "Searched Zone"
+                            showBottomSheet = true
+                            searchQuery = ""
+                            suggestions = emptyList()
+                            focusManager.clearFocus()
+                        }
                     }
+                }
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    geocoder.getFromLocationName(query, 1, object : Geocoder.GeocodeListener {
+                        override fun onGeocode(addresses: List<Address>) = onResults(addresses)
+                        override fun onError(errorMessage: String?) {
+                            scope.launch(Dispatchers.Main) { isSearching = false }
+                        }
+                    })
+                } else {
+                    @Suppress("DEPRECATION")
+                    val results = geocoder.getFromLocationName(query, 1)
+                    onResults(results)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { isSearching = false }
@@ -122,10 +137,25 @@ fun MapSelectionScreen(
         isSearching = true
         withContext(Dispatchers.IO) {
             try {
-                val results = geocoder.getFromLocationName(searchQuery, 5)
-                withContext(Dispatchers.Main) {
-                    suggestions = results ?: emptyList()
-                    isSearching = false
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    geocoder.getFromLocationName(searchQuery, 5, object : Geocoder.GeocodeListener {
+                        override fun onGeocode(addresses: List<Address>) {
+                            scope.launch(Dispatchers.Main) {
+                                suggestions = addresses
+                                isSearching = false
+                            }
+                        }
+                        override fun onError(errorMessage: String?) {
+                            scope.launch(Dispatchers.Main) { isSearching = false }
+                        }
+                    })
+                } else {
+                    @Suppress("DEPRECATION")
+                    val results = geocoder.getFromLocationName(searchQuery, 5)
+                    withContext(Dispatchers.Main) {
+                        suggestions = results ?: emptyList()
+                        isSearching = false
+                    }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { isSearching = false }
@@ -136,12 +166,25 @@ fun MapSelectionScreen(
     fun reverseGeocode(latLng: LatLng) {
         scope.launch(Dispatchers.IO) {
             try {
-                val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
-                if (!addresses.isNullOrEmpty()) {
-                    val address = addresses[0]
-                    val name = address.featureName ?: address.thoroughfare ?: "New Zone"
-                    withContext(Dispatchers.Main) {
-                        tempName = name
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1, object : Geocoder.GeocodeListener {
+                        override fun onGeocode(addresses: List<Address>) {
+                            if (addresses.isNotEmpty()) {
+                                val address = addresses[0]
+                                val name = address.featureName ?: address.thoroughfare ?: "New Zone"
+                                scope.launch(Dispatchers.Main) { tempName = name }
+                            }
+                        }
+                    })
+                } else {
+                    @Suppress("DEPRECATION")
+                    val addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
+                    if (!addresses.isNullOrEmpty()) {
+                        val address = addresses[0]
+                        val name = address.featureName ?: address.thoroughfare ?: "New Zone"
+                        withContext(Dispatchers.Main) {
+                            tempName = name
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -288,7 +331,7 @@ fun MapSelectionScreen(
                     .animateContentSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Slim Glassmorphic Search Bar
+                // Slim Glass morphic Search Bar
                 Surface(
                     tonalElevation = 8.dp,
                     shadowElevation = 12.dp,

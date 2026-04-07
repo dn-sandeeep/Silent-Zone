@@ -59,14 +59,6 @@ class MainActivity : ComponentActivity() {
         
         permissionManager = PermissionManager(this)
         
-        // Start the background service
-        val serviceIntent = Intent(this, SilentZoneService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
-        } else {
-            startService(serviceIntent)
-        }
-
         enableEdgeToEdge()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         fetchCurrentLocation()
@@ -103,9 +95,7 @@ class MainActivity : ComponentActivity() {
                             onDismissDialog = { vm.clearSsidList() },
                             silentSsids = silentSsids,
                             vibrateSsids = vibrateSsids,
-                            onDeleteSsid = { ssid ->
-                                vm.removeWifiZone(ssid)
-                            },
+                            onDeleteSsid = { ssid -> vm.removeWifiZone(ssid) },
                             currentWifiSsid = currentWifiSsid,
                             locationZones = locationZones,
                             onAddLocationZone = { mode, radius -> 
@@ -115,7 +105,7 @@ class MainActivity : ComponentActivity() {
                                     permissionManager.checkAndRequestBackgroundLocation()
                                 }
                             },
-                            onMapZonesSelected = { zones, mode ->
+                            onMapZonesSelected = { zones, mode -> 
                                 if (permissionManager.hasBackgroundPermission()) {
                                     zones.forEach { zone ->
                                         vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode, zone.radius)
@@ -129,7 +119,13 @@ class MainActivity : ComponentActivity() {
                             importantContacts = importantContacts,
                             onPickContact = { handleAddImportantContact() },
                             onDeleteContact = { phoneNumber -> vm.removeImportantContact(phoneNumber) },
-                            onRequestPermission = { action -> permissionManager.requestLocationPermissions { action() } },
+                            onRequestPermission = { action -> permissionManager.requestLocationPermissions {
+                                permissionManager.checkAndRequestBackgroundLocation()
+                                action() 
+                            }},
+                            onDisableBatteryOptimization = { permissionManager.requestDisableBatteryOptimization() },
+                            hasBackgroundLocation = state.hasBackgroundLocation,
+                            isIgnoringBatteryOptimizations = state.isIgnoringBatteryOptimizations,
                             zoneCount = wifiZones.size + locationZones.size,
                             contactCount = importantContacts.size
                         )
@@ -216,13 +212,15 @@ class MainActivity : ComponentActivity() {
                 return info.ssid.trim('"')
             }
             
-            // Priority 2: Modern
-            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
-            val targetNetwork = network ?: connectivityManager.activeNetwork
-            val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
-            val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
-            if (wifiInfo != null && wifiInfo.ssid != null && wifiInfo.ssid != WifiManager.UNKNOWN_SSID) {
-                return wifiInfo.ssid.trim('"')
+            // Priority 2: Modern (API 29+)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                val targetNetwork = network ?: connectivityManager.activeNetwork
+                val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
+                val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
+                if (wifiInfo != null && wifiInfo.ssid != null && wifiInfo.ssid != WifiManager.UNKNOWN_SSID) {
+                    return wifiInfo.ssid.trim('"')
+                }
             }
             
             null
@@ -233,7 +231,7 @@ class MainActivity : ComponentActivity() {
 
     private fun saveSsid(ssid: String?, mode: RingerMode) {
         if (ssid.isNullOrBlank()) return
-        vm.addWifiZone(ssid, mode)
+        vm.addWifiZone(ssid, mode, currentLocation?.latitude, currentLocation?.longitude)
         vm.checkWifiConnection(getCurrentSsid())
     }
 }

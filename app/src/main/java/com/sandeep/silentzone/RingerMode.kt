@@ -6,5 +6,7 @@ data class UiState(
     val accessGranted: Boolean = false,
     val currentMode: RingerMode = RingerMode.NORMAL,
     val isFallback: Boolean = false,
-    val message: String? = null
+    val message: String? = null,
+    val hasBackgroundLocation: Boolean = true,
+    val isIgnoringBatteryOptimizations: Boolean = true
 )

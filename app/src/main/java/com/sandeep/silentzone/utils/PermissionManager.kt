@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -150,5 +151,28 @@ class PermissionManager(private val activity: ComponentActivity) {
     fun isDndAccessGranted(): Boolean {
         val notifManager = activity.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         return notifManager.isNotificationPolicyAccessGranted
+    }
+
+    fun isIgnoringBatteryOptimizations(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = activity.getSystemService(Context.POWER_SERVICE) as PowerManager
+            return pm.isIgnoringBatteryOptimizations(activity.packageName)
+        }
+        return true
+    }
+
+    fun requestDisableBatteryOptimization() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                data = Uri.parse("package:${activity.packageName}")
+            }
+            try {
+                activity.startActivity(intent)
+            } catch (e: Exception) {
+                // Some manufacturers block the direct request, fallback to the list
+                val listIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
+                activity.startActivity(listIntent)
+            }
+        }
     }
 }

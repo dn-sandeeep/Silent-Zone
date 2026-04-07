@@ -108,7 +108,17 @@ class SilentZoneService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val notification = createNotification()
+        if (intent?.action == ACTION_RESTORE_MODE) {
+            android.util.Log.d("SilentZoneService", "Restore action received")
+            serviceScope.launch {
+                repository.restoreOriginalMode()
+                stopSelf()
+            }
+            return START_NOT_STICKY
+        }
+
+        val zoneName = intent?.getStringExtra(EXTRA_ZONE_NAME) ?: "Active"
+        val notification = createNotification(zoneName)
         startForeground(NOTIFICATION_ID, notification)
         return START_STICKY
     }
@@ -156,7 +166,7 @@ class SilentZoneService : Service() {
         }
     }
 
-    private fun createNotification(): Notification {
+    private fun createNotification(zoneName: String): Notification {
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -165,18 +175,33 @@ class SilentZoneService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val restoreIntent = Intent(this, SilentZoneService::class.java).apply {
+            action = ACTION_RESTORE_MODE
+        }
+        val restorePendingIntent = PendingIntent.getService(
+            this, 0, restoreIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("SilentZone is Active")
-            .setContentText("Monitoring your zones in the background")
+            .setContentTitle("SilentZone: $zoneName")
+            .setContentText("Protecting your silence in this area")
             .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .addAction(
+                android.R.drawable.ic_menu_revert,
+                "Restore Now",
+                restorePendingIntent
+            )
             .build()
     }
 
     companion object {
         const val CHANNEL_ID = "silent_zone_service_channel"
         const val NOTIFICATION_ID = 1
+        const val EXTRA_ZONE_NAME = "extra_zone_name"
+        const val ACTION_RESTORE_MODE = "com.sandeep.silentzone.ACTION_RESTORE_MODE"
     }
 }

@@ -1,9 +1,14 @@
 package com.sandeep.silentzone
 
+import android.content.Context
+import android.os.Build
+import android.os.PowerManager
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -18,7 +23,8 @@ sealed class OperationState {
 
 @HiltViewModel
 class SilentModeViewModel @Inject constructor(
-    private val repo: SilentModeRepository
+    private val repo: SilentModeRepository,
+    @ApplicationContext private val appContext: Context
 ) : ViewModel() {
     private val _operationState = MutableStateFlow<OperationState>(OperationState.Idle)
     val operationState: StateFlow<OperationState> = _operationState.asStateFlow()
@@ -59,9 +65,27 @@ class SilentModeViewModel @Inject constructor(
             accessGranted = repo.hasPolicyAccess(),
             currentMode = mode,
             isFallback = fallback && !repo.hasPolicyAccess(),
-            message = msg
+            message = msg,
+            hasBackgroundLocation = hasBackgroundLocationPermission(),
+            isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations()
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState(repo.hasPolicyAccess(), repo.getCurrentMode(), false, null))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState(repo.hasPolicyAccess(), repo.getCurrentMode(), false, null, true, true))
+
+    private fun hasBackgroundLocationPermission(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContextCompat.checkSelfPermission(appContext, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    private fun isIgnoringBatteryOptimizations(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val pm = appContext.getSystemService(Context.POWER_SERVICE) as PowerManager
+            return pm.isIgnoringBatteryOptimizations(appContext.packageName)
+        }
+        return true
+    }
 
     fun refresh() {
         repo.refreshMode()
@@ -104,9 +128,9 @@ class SilentModeViewModel @Inject constructor(
     val wifiZones: StateFlow<List<WifiZone>> = repo.getWifiZonesFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    fun addWifiZone(ssid: String, mode: RingerMode) {
+    fun addWifiZone(ssid: String, mode: RingerMode, latitude: Double? = null, longitude: Double? = null) {
         launchOperation("WiFi Zone Added!") {
-            repo.addWifiZone(WifiZone(ssid, mode))
+            repo.addWifiZone(WifiZone(ssid, mode, latitude, longitude))
         }
     }
 

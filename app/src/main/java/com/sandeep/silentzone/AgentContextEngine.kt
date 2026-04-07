@@ -1,7 +1,6 @@
 package com.sandeep.silentzone
 
 import android.Manifest
-import android.content.ContentResolver
 import android.content.Context
 import android.content.pm.PackageManager
 import android.database.Cursor
@@ -9,13 +8,12 @@ import android.provider.CalendarContract
 import android.util.Log
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
-import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class AgentContextEngine @Inject constructor(
-    @ApplicationContext private val context: Context
+    @param:ApplicationContext private val context: Context
 ) {
 
     fun isUserInMeeting(): Boolean {
@@ -61,7 +59,7 @@ class AgentContextEngine @Inject constructor(
         cursor?.use {
             while (it.moveToNext()) {
                 val availability = it.getInt(2)
-                val title = it.getString(3)
+                //val title = it.getString(3)
                 
                 // AVAILABILITY_BUSY = 0, AVAILABILITY_FREE = 1, AVAILABILITY_TENTATIVE = 2
                 // We care about BUSY

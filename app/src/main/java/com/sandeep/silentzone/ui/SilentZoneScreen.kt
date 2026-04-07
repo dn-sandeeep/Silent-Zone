@@ -37,7 +37,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
-import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SmartButton
@@ -58,11 +57,11 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -72,6 +71,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.android.gms.maps.model.LatLng
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
@@ -99,15 +99,18 @@ fun SilentScreen(
     onAddLocationZone: (RingerMode, Float) -> Unit,
     onMapZonesSelected: (List<MapZone>, RingerMode) -> Unit,
     onDeleteLocationZone: (String) -> Unit,
-    initialUserLocation: com.google.android.gms.maps.model.LatLng?,
+    initialUserLocation: LatLng?,
     importantContacts: List<ImportantContact>,
     onPickContact: () -> Unit,
     onDeleteContact: (String) -> Unit,
     onRequestPermission: (() -> Unit) -> Unit,
+    onDisableBatteryOptimization: () -> Unit,
+    hasBackgroundLocation: Boolean,
+    isIgnoringBatteryOptimizations: Boolean,
     zoneCount: Int = 0,
     contactCount: Int = 0
 ) {
-    var selectedScreen by remember { mutableStateOf(0) }
+    var selectedScreen by remember { mutableIntStateOf(0) }
     
     BackHandler(enabled = selectedScreen != 0) {
         selectedScreen = 0
@@ -121,7 +124,7 @@ fun SilentScreen(
     var radiusSource by remember { mutableStateOf<RadiusSource?>(null) }
 
     if (showMapSelection) {
-        val startLocation = initialUserLocation ?: com.google.android.gms.maps.model.LatLng(20.5937, 78.9629)
+        val startLocation = initialUserLocation ?: LatLng(20.5937, 78.9629)
         MapSelectionScreen(
             initialLocation = startLocation,
             onZonesSelected = { zones ->
@@ -260,6 +263,10 @@ fun SilentScreen(
                             setVibrate = setVibrate,
                             setNormal = setNormal,
                             currentWifiSsid = currentWifiSsid,
+                            hasBackgroundLocation = hasBackgroundLocation,
+                            isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations,
+                            onRequestBackgroundLocation = { onRequestPermission { /* Logic handled by manager */ } }, // This needs bridge
+                            onDisableBatteryOptimization = onDisableBatteryOptimization,
                             zoneCount = zoneCount,
                             contactCount = contactCount
                         )
@@ -349,6 +356,10 @@ fun DashboardScreen(
     setVibrate: () -> Unit,
     setNormal: () -> Unit,
     currentWifiSsid: String?,
+    hasBackgroundLocation: Boolean,
+    isIgnoringBatteryOptimizations: Boolean,
+    onRequestBackgroundLocation: () -> Unit,
+    onDisableBatteryOptimization: () -> Unit,
     zoneCount: Int,
     contactCount: Int
 ) {
@@ -402,6 +413,13 @@ fun DashboardScreen(
                     PermissionWarningCard(onGrantAccess = onGrantAccess)
                 }
             }
+
+            SystemStatusSection(
+                hasBackgroundLocation = hasBackgroundLocation,
+                isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations,
+                onRequestBackgroundLocation = onRequestBackgroundLocation,
+                onDisableBatteryOptimization = onDisableBatteryOptimization
+            )
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 DashboardSectionHeader("Quick Controls")
@@ -625,6 +643,92 @@ fun EmptyStateText(text: String) {
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center
         )
+    }
+}
+
+@Composable
+fun SystemStatusSection(
+    hasBackgroundLocation: Boolean,
+    isIgnoringBatteryOptimizations: Boolean,
+    onRequestBackgroundLocation: () -> Unit,
+    onDisableBatteryOptimization: () -> Unit
+) {
+    if (!hasBackgroundLocation || !isIgnoringBatteryOptimizations) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            DashboardSectionHeader("System Health")
+            
+            if (!hasBackgroundLocation) {
+                StatusCard(
+                    title = "Background Location",
+                    description = "Required to detect zones when app is closed.",
+                    actionText = "Allow All The Time",
+                    onClick = onRequestBackgroundLocation,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            
+            if (!isIgnoringBatteryOptimizations) {
+                StatusCard(
+                    title = "Battery Optimization",
+                    description = "System may kill SilentZone. Disable for 100% reliability.",
+                    actionText = "Disable Optimization",
+                    onClick = onDisableBatteryOptimization,
+                    color = MaterialTheme.colorScheme.tertiary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun StatusCard(
+    title: String,
+    description: String,
+    actionText: String,
+    onClick: () -> Unit,
+    color: Color
+) {
+    GlassCard {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .background(color.copy(alpha = 0.1f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.GppMaybe, 
+                        null, 
+                        tint = color, 
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Button(
+                onClick = onClick,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = color.copy(alpha = 0.2f), contentColor = color),
+                shape = RoundedCornerShape(12.dp),
+                elevation = ButtonDefaults.buttonElevation(0.dp)
+            ) {
+                Text(actionText, fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 

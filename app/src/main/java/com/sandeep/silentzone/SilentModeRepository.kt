@@ -2,6 +2,7 @@ package com.sandeep.silentzone
 
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Intent
 import android.media.AudioManager
 import com.sandeep.silentzone.data.ImportantContactEntity
 import com.sandeep.silentzone.data.LocationZoneEntity
@@ -27,7 +28,9 @@ data class LocationZone(
 
 data class WifiZone(
     val ssid: String,
-    val mode: RingerMode
+    val mode: RingerMode,
+    val latitude: Double? = null,
+    val longitude: Double? = null
 )
 
 data class ImportantContact(
@@ -44,8 +47,6 @@ class SilentModeRepository @Inject constructor(
 ) {
     private val audio: AudioManager =
         appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    private val notif: NotificationManager =
-        appContext.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
     
     private val _currentModeFlow = kotlinx.coroutines.flow.MutableStateFlow(getCurrentMode())
     val currentModeFlow: kotlinx.coroutines.flow.StateFlow<RingerMode> = _currentModeFlow.asStateFlow()
@@ -116,6 +117,7 @@ class SilentModeRepository @Inject constructor(
     }
 
     fun hasPolicyAccess(): Boolean {
+        val notif = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
         return notif.isNotificationPolicyAccessGranted
     }
 
@@ -181,6 +183,45 @@ class SilentModeRepository @Inject constructor(
         return getCurrentMode()
     }
 
+    private fun startMonitoringService(zoneName: String) {
+        val intent = Intent(appContext, SilentZoneService::class.java).apply {
+            putExtra(SilentZoneService.EXTRA_ZONE_NAME, zoneName)
+        }
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            appContext.startForegroundService(intent)
+        } else {
+            appContext.startService(intent)
+        }
+    }
+
+    private fun stopMonitoringService() {
+        val intent = Intent(appContext, SilentZoneService::class.java)
+        appContext.stopService(intent)
+    }
+
+    suspend fun reRegisterAllTriggers() {
+        android.util.Log.d("SilentModeRepo", "Re-registering all triggers...")
+        
+        // 1. Re-register Location Zones
+        val locationZones = getLocationZones()
+        locationZones.forEach { zone ->
+            geofenceManager.addGeofence(zone.id, zone.latitude, zone.longitude, zone.radius)
+        }
+
+        // 2. Re-register WiFi Proxy Geofences
+        val wifiZones = getWifiZonesFlow().first()
+        wifiZones.forEach { wifiZone ->
+            if (wifiZone.latitude != null && wifiZone.longitude != null) {
+                geofenceManager.addGeofence(
+                    requestId = "wifi_proxy_${wifiZone.ssid}",
+                    latitude = wifiZone.latitude,
+                    longitude = wifiZone.longitude,
+                    radius = 150f
+                )
+            }
+        }
+    }
+
     suspend fun onWifiChanged(currentSsid: String?) {
         val zones = getWifiZonesFlow().first()
         val activeWifiSet = getActiveWifiSet()
@@ -192,6 +233,7 @@ class SilentModeRepository @Inject constructor(
                     saveOriginalMode()
                     addToWifiSet(currentSsid)
                     applyMode(zone.mode)
+                    startMonitoringService(currentSsid)
                 }
             } else if (activeWifiSet.isNotEmpty()) {
                 // Not in a saved zone anymore
@@ -206,6 +248,18 @@ class SilentModeRepository @Inject constructor(
     }
 
     suspend fun onLocationTransition(id: String, isEntering: Boolean) {
+        if (id.startsWith("wifi_proxy_")) {
+            val ssid = id.removePrefix("wifi_proxy_")
+            if (isEntering) {
+                android.util.Log.d("SilentModeRepo", "Entering WiFi Proxy for $ssid. Starting scan service.")
+                startMonitoringService("WiFi: $ssid")
+            } else {
+                android.util.Log.d("SilentModeRepo", "Exiting WiFi Proxy for $ssid. Stopping service.")
+                checkAndRestore()
+            }
+            return
+        }
+
         // Use direct DB lookup to avoid race conditions with INITIAL_TRIGGER
         val entity = dao.getLocationZoneById(id) ?: return
         val zone = entity.toDomain()
@@ -216,6 +270,7 @@ class SilentModeRepository @Inject constructor(
             saveOriginalMode()
             addToLocationSet(id)
             applyMode(zone.mode)
+            startMonitoringService(zone.name)
         } else if (activeLocationSet.contains(id)) {
             removeFromLocationSet(id)
             checkAndRestore()
@@ -232,6 +287,7 @@ class SilentModeRepository @Inject constructor(
             if (getCurrentMode() != RingerMode.NORMAL && prefs.getInt(PREF_KEY_SAVED_MODE, -1) == -1) {
                 applyMode(RingerMode.NORMAL)
             }
+            stopMonitoringService()
         } else {
             // Priority: Apply mode from the most recently triggered zone (conceptually)
             // Or simply any of the active modes (usually SILENT is the goal)
@@ -285,10 +341,20 @@ class SilentModeRepository @Inject constructor(
 
     suspend fun addWifiZone(wifiZone: WifiZone) {
         dao.insertWifiZone(wifiZone.toEntity())
+        // Add a 150m proxy geofence if coordinates are available
+        if (wifiZone.latitude != null && wifiZone.longitude != null) {
+            geofenceManager.addGeofence(
+                requestId = "wifi_proxy_${wifiZone.ssid}",
+                latitude = wifiZone.latitude,
+                longitude = wifiZone.longitude,
+                radius = 150f
+            )
+        }
     }
 
     suspend fun removeWifiZone(ssid: String) {
         dao.deleteWifiZoneBySsid(ssid)
+        geofenceManager.removeGeofence("wifi_proxy_$ssid")
         if (getActiveWifiSet().contains(ssid)) {
             removeFromWifiSet(ssid)
             checkAndRestore()
@@ -328,8 +394,8 @@ class SilentModeRepository @Inject constructor(
     // Mappers
     private fun LocationZoneEntity.toDomain() = LocationZone(id, latitude, longitude, name, radius, mode)
     private fun LocationZone.toEntity() = LocationZoneEntity(id, latitude, longitude, name, radius, mode)
-    private fun WifiZoneEntity.toDomain() = WifiZone(ssid, mode)
-    private fun WifiZone.toEntity() = WifiZoneEntity(ssid, mode)
+    private fun WifiZoneEntity.toDomain() = WifiZone(ssid, mode, latitude, longitude)
+    private fun WifiZone.toEntity() = WifiZoneEntity(ssid, mode, latitude, longitude)
     private fun ImportantContactEntity.toDomain() = ImportantContact(id, name, phoneNumber)
     private fun ImportantContact.toEntity() = ImportantContactEntity(id, name, phoneNumber)
 }
