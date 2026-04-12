@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         
         permissionManager = PermissionManager(this)
+        permissionManager.requestInitialPermissions()
         
         enableEdgeToEdge()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -117,7 +118,6 @@ class MainActivity : ComponentActivity() {
                             onPickContact = { handleAddImportantContact() },
                             onDeleteContact = { phoneNumber -> vm.removeImportantContact(phoneNumber) },
                             onRequestPermission = { action -> permissionManager.requestLocationPermissions {
-                                permissionManager.checkAndRequestBackgroundLocation()
                                 action() 
                             }},
                             onDisableBatteryOptimization = { permissionManager.requestDisableBatteryOptimization() },
