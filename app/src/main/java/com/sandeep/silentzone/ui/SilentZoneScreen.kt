@@ -93,6 +93,7 @@ fun SilentScreen(
     onDismissDialog: () -> Unit,
     silentSsids: Set<String>,
     vibrateSsids: Set<String>,
+    normalSsids: Set<String>,
     onDeleteSsid: (String) -> Unit,
     currentWifiSsid: String?,
     locationZones: List<LocationZone>,
@@ -273,6 +274,7 @@ fun SilentScreen(
                         1 -> ZonesScreen(
                             silentSsids = silentSsids,
                             vibrateSsids = vibrateSsids,
+                            normalSsids = normalSsids,
                             locationZones = locationZones,
                             onDeleteSsid = onDeleteSsid,
                             onDeleteLocationZone = onDeleteLocationZone
@@ -535,6 +537,7 @@ fun DashboardScreen(
 fun ZonesScreen(
     silentSsids: Set<String>,
     vibrateSsids: Set<String>,
+    normalSsids: Set<String>,
     locationZones: List<LocationZone>,
     onDeleteSsid: (String) -> Unit,
     onDeleteLocationZone: (String) -> Unit
@@ -567,7 +570,7 @@ fun ZonesScreen(
 
         // Section 2: Wi-Fi Networks
         item { DashboardSectionHeader("Wi-Fi Networks") }
-        if (silentSsids.isEmpty() && vibrateSsids.isEmpty()) {
+        if (silentSsids.isEmpty() && vibrateSsids.isEmpty() && normalSsids.isEmpty()) {
             item {
                 MiniEmptyState(
                     icon = Icons.Default.Wifi,
@@ -581,6 +584,9 @@ fun ZonesScreen(
                 ZoneItemCard(ssid = ssid, onDelete = { onDeleteSsid(ssid) })
             }
             items(vibrateSsids.toList()) { ssid ->
+                ZoneItemCard(ssid = ssid, onDelete = { onDeleteSsid(ssid) })
+            }
+            items(normalSsids.toList()) { ssid ->
                 ZoneItemCard(ssid = ssid, onDelete = { onDeleteSsid(ssid) })
             }
         }

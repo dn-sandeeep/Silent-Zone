@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
 
                         val silentSsids = wifiZones.filter { it.mode == RingerMode.SILENT }.map { it.ssid }.toSet()
                         val vibrateSsids = wifiZones.filter { it.mode == RingerMode.VIBRATE }.map { it.ssid }.toSet()
+                        val normalSsids = wifiZones.filter { it.mode == RingerMode.NORMAL }.map { it.ssid }.toSet()
 
                         SilentScreen(
                             accessGranted = state.accessGranted,
@@ -93,6 +94,7 @@ class MainActivity : ComponentActivity() {
                             onDismissDialog = { vm.clearSsidList() },
                             silentSsids = silentSsids,
                             vibrateSsids = vibrateSsids,
+                            normalSsids = normalSsids,
                             onDeleteSsid = { ssid -> vm.removeWifiZone(ssid) },
                             currentWifiSsid = currentWifiSsid,
                             locationZones = locationZones,

@@ -707,6 +707,19 @@ fun ModeSelectionBottomSheet(
                     Text("VIBRATE", fontWeight = FontWeight.Black)
                 }
             }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Button(
+                onClick = { onModeSelected(RingerMode.NORMAL) },
+                modifier = Modifier.fillMaxWidth().height(64.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(20.dp)
+            ) {
+                Icon(Icons.Default.NotificationsActive, null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("NORMAL", fontWeight = FontWeight.Black)
+            }
         }
     }
 }
