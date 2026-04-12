@@ -2,10 +2,8 @@ package com.sandeep.silentzone
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.net.wifi.WifiManager
@@ -27,7 +25,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.google.android.gms.location.FusedLocationProviderClient
@@ -228,7 +225,6 @@ class MainActivity : ComponentActivity() {
             null
         }
     }
-
     private fun saveSsid(ssid: String?, mode: RingerMode) {
         if (ssid.isNullOrBlank()) return
         vm.addWifiZone(ssid, mode, currentLocation?.latitude, currentLocation?.longitude)
