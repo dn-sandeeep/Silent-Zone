@@ -475,6 +475,20 @@ class SilentModeRepository @Inject constructor(
         syncCurrentState(getCurrentSsid())
     }
 
+    /**
+     * Called when the user turns GPS/Location OFF from system settings.
+     * We clear all active location-based zone activations and restore the original mode,
+     * because we can no longer reliably detect geofence exits.
+     */
+    suspend fun onLocationProviderDisabled() {
+        val activeLocationSet = getActiveLocationSet()
+        if (activeLocationSet.isNotEmpty()) {
+            android.util.Log.d("SilentModeRepo", "Location provider disabled. Clearing ${activeLocationSet.size} active location zones.")
+            activeLocationSet.forEach { removeFromLocationSet(it) }
+            checkAndRestore()
+        }
+    }
+
     // Mappers
     private fun LocationZoneEntity.toDomain() = LocationZone(id, latitude, longitude, name, radius, mode)
     private fun LocationZone.toEntity() = LocationZoneEntity(id, latitude, longitude, name, radius, mode)

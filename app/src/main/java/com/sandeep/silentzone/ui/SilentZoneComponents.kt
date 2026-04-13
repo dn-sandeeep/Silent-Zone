@@ -516,7 +516,7 @@ fun PermissionWarningCard(onGrantAccess: () -> Unit) {
             }
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "SilentZone needs 'Do Not Disturb' access to manage your ringer modes automatically.",
+                text = "To automatically switch your phone to Silent mode, SilentZone needs permission to control 'Do Not Disturb'. Without this, only Vibrate mode will work.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
@@ -541,6 +541,9 @@ fun SsidSelectionBottomSheet(
     onSsidSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    var manualSsid by remember { androidx.compose.runtime.mutableStateOf("") }
+    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = MaterialTheme.colorScheme.surface,
@@ -553,18 +556,99 @@ fun SsidSelectionBottomSheet(
                 .padding(bottom = 48.dp)
         ) {
             Text(
-                "Nearby Networks",
+                "Add WiFi Zone",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            
+            Text(
+                "Select from nearby networks or type SSID manually",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // ── Manual SSID Entry ────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                androidx.compose.material3.OutlinedTextField(
+                    value = manualSsid,
+                    onValueChange = { manualSsid = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = {
+                        Text(
+                            "Enter WiFi name (SSID)",
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                        )
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Wifi,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.tertiary
+                        )
+                    },
+                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.tertiary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    ),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onDone = {
+                            keyboardController?.hide()
+                            if (manualSsid.isNotBlank()) onSsidSelected(manualSsid.trim())
+                        }
+                    )
+                )
+                Button(
+                    onClick = {
+                        keyboardController?.hide()
+                        if (manualSsid.isNotBlank()) onSsidSelected(manualSsid.trim())
+                    },
+                    enabled = manualSsid.isNotBlank(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.tertiary
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
+                ) {
+                    Text("Add", fontWeight = FontWeight.Black)
+                }
+            }
+
             Spacer(modifier = Modifier.height(24.dp))
-            
+
+            // ── Divider ──────────────────────────────────────────
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
+                Text(
+                    "NEARBY",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                    fontWeight = FontWeight.Bold
+                )
+                androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ── Scanned SSID List ────────────────────────────────
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 400.dp)
+                    .heightIn(max = 320.dp)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -587,29 +671,47 @@ fun SsidSelectionBottomSheet(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.Default.Wifi, 
-                                null, 
-                                tint = MaterialTheme.colorScheme.secondary, 
+                                Icons.Default.Wifi,
+                                null,
+                                tint = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
                         Text(
-                            ssid, 
+                            ssid,
                             style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurface, 
+                            color = MaterialTheme.colorScheme.onSurface,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
                 if (ssids.isEmpty()) {
-                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = MaterialTheme.colorScheme.secondary)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier.size(28.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "Scanning nearby networks...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
+
 
 @Composable
 fun ZoneItemCard(ssid: String, onDelete: () -> Unit) {

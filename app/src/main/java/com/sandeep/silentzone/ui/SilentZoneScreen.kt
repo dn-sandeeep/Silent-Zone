@@ -321,7 +321,7 @@ fun SilentScreen(
             )
         }
 
-        if (showWifiSelection && availableSsidList.isNotEmpty()) {
+        if (showWifiSelection) {
             SsidSelectionBottomSheet(
                 ssids = availableSsidList,
                 onSsidSelected = { ssid ->

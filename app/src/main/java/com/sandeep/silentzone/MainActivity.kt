@@ -88,7 +88,16 @@ class MainActivity : ComponentActivity() {
                             setSilent = vm::setSilent,
                             setVibrate = vm::setVibrate,
                             setNormal = vm::setNormal,
-                            addZone = { permissionManager.requestLocationPermissions { startWifiScan() } },
+                            addZone = {
+                                // Try scanning if permission is granted; dialog always opens
+                                // so user can use manual SSID entry even without permission.
+                                if (permissionManager.wifiPermissionGranted()) {
+                                    startWifiScan()
+                                } else {
+                                    // Open empty dialog - manual entry will still work.
+                                    vm.updateSsidList(emptyList())
+                                }
+                            },
                             availableSsidList = availableSsidList,
                             onSelectedSsid = { ssid, mode -> saveSsid(ssid, mode) },
                             onDismissDialog = { vm.clearSsidList() },
@@ -181,7 +190,10 @@ class MainActivity : ComponentActivity() {
     private fun startWifiScan() {
         try {
             val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-            if (!wifiManager.isWifiEnabled) return
+            if (!wifiManager.isWifiEnabled) {
+                Toast.makeText(this, "Please turn on WiFi to scan nearby networks", Toast.LENGTH_LONG).show()
+                return
+            }
             if (wifiManager.startScan()) {
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     try {
