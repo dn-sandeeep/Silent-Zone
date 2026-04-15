@@ -168,15 +168,11 @@ class PermissionManager(private val activity: ComponentActivity) {
 
     fun requestDisableBatteryOptimization() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
-                data = Uri.parse("package:${activity.packageName}")
-            }
             try {
-                activity.startActivity(intent)
-            } catch (e: Exception) {
-                // Some manufacturers block the direct request, fallback to the list
                 val listIntent = Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS)
                 activity.startActivity(listIntent)
+            } catch (e: Exception) {
+                Toast.makeText(activity, "Unable to open battery settings", Toast.LENGTH_SHORT).show()
             }
         }
     }
