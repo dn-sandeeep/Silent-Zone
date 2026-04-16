@@ -9,6 +9,12 @@ import com.microsoft.clarity.models.LogLevel
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.Constraints
+import com.sandeep.silentzone.worker.KeepAliveWorker
+import java.util.concurrent.TimeUnit
 
 @HiltAndroidApp
 class SilentZoneApplication : Application(), Configuration.Provider {
@@ -34,7 +40,23 @@ class SilentZoneApplication : Application(), Configuration.Provider {
         )
         Clarity.initialize(applicationContext, config)
         //Clarity.setCurrentMaskingLevel(MaskingLevel.Relaxed)
+        setupKeepAliveWorker()
+    }
 
+    private fun setupKeepAliveWorker() {
+        val constraints = Constraints.Builder()
+            .setRequiresBatteryNotLow(true)
+            .build()
+            
+        val keepAliveWorkRequest = PeriodicWorkRequestBuilder<KeepAliveWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .build()
+            
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            "silent_zone_keep_alive",
+            ExistingPeriodicWorkPolicy.KEEP,
+            keepAliveWorkRequest
+        )
     }
 
     override val workManagerConfiguration: Configuration

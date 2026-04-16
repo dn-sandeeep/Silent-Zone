@@ -101,6 +101,7 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.androidx.compose.runtime)
     ksp(libs.hilt.compiler)
+    ksp(libs.hilt.ext.compiler)
     implementation(libs.hilt.navigation.compose)
 
     // Room
