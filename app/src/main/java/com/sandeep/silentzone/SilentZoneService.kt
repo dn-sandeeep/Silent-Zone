@@ -74,10 +74,34 @@ class SilentZoneService : Service() {
 
     private fun checkWifiAndApplyMode(network: Network?) {
         serviceScope.launch {
-            // Delay to allow network info to settle
-            if (network != null) kotlinx.coroutines.delay(1000)
-            val ssid = getCurrentSsid(network)
-            repository.onWifiChanged(ssid)
+            if (network == null) {
+                // Immediate disconnect processing
+                repository.onWifiChanged(null)
+                return@launch
+            }
+
+            var attempts = 0
+            var finalSsid: String? = null
+
+            // Background retry loop: Android 14 can take a few seconds to "permit" 
+            // the background service to read the real SSID.
+            while (attempts < 3) {
+                // 1s first wait, then 3s between retries
+                val delayTime = if (attempts == 0) 1000L else 3000L
+                kotlinx.coroutines.delay(delayTime)
+                
+                finalSsid = getCurrentSsid(network)
+                
+                if (finalSsid != WifiManager.UNKNOWN_SSID) {
+                    android.util.Log.d("SilentZoneService", "Successfully identified SSID: $finalSsid")
+                    break
+                }
+
+                attempts++
+                android.util.Log.d("SilentZoneService", "SSID is Unknown (background limit), retrying... ($attempts/3)")
+            }
+
+            repository.onWifiChanged(finalSsid)
         }
     }
 
@@ -85,23 +109,32 @@ class SilentZoneService : Service() {
     private fun getCurrentSsid(network: Network? = null): String? {
         return try {
             val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            var isConnectedButUnknown = false
             
             // Priority 1: Legacy API (often more reliable for SSID even on modern Android)
             @Suppress("DEPRECATION")
             val info = wifiManager.connectionInfo
-            if (info != null && info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) {
-                return info.ssid.trim('"')
+            if (info != null && info.networkId != -1) {
+                if (info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) {
+                    return info.ssid.trim('"')
+                } else {
+                    isConnectedButUnknown = true
+                }
             }
             
             // Priority 2: Modern API (NetworkCapabilities)
             val targetNetwork = network ?: connectivityManager.activeNetwork
             val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
             val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
-            if (wifiInfo != null && wifiInfo.ssid != null && wifiInfo.ssid != WifiManager.UNKNOWN_SSID) {
-                return wifiInfo.ssid.trim('"')
+            if (wifiInfo != null) {
+                if (wifiInfo.ssid != null && wifiInfo.ssid != WifiManager.UNKNOWN_SSID) {
+                    return wifiInfo.ssid.trim('"')
+                } else {
+                    isConnectedButUnknown = true
+                }
             }
             
-            null
+            if (isConnectedButUnknown) WifiManager.UNKNOWN_SSID else null
         } catch (e: Exception) {
             null
         }
@@ -183,9 +216,13 @@ class SilentZoneService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val isSearching = zoneName.startsWith("WiFi: ")
+        val displayTitle = if (isSearching) "Searching for WiFi: ${zoneName.removePrefix("WiFi: ")}" else "SilentZone: $zoneName"
+        val contentText = if (isSearching) "Waiting to connect and protect your silence" else "Protecting your silence in this area"
+
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("SilentZone: $zoneName")
-            .setContentText("Protecting your silence in this area")
+            .setContentTitle(displayTitle)
+            .setContentText(contentText)
             .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
             .setContentIntent(pendingIntent)
             .setOngoing(true)

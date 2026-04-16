@@ -67,6 +67,7 @@ class SilentModeRepository @Inject constructor(
         private const val PREF_KEY_SAVED_MODE = "saved_ringer_mode"
         private const val PREF_KEY_ACTIVE_WIFI_SET = "active_wifi_set"
         private const val PREF_KEY_ACTIVE_LOCATION_SET = "active_location_set"
+        private const val PREF_KEY_ACTIVE_PROXY_SET = "active_proxy_set"
     }
 
     private fun getActiveWifiSet(): Set<String> = prefs.getStringSet(PREF_KEY_ACTIVE_WIFI_SET, emptySet()) ?: emptySet()
@@ -94,6 +95,20 @@ class SilentModeRepository @Inject constructor(
         val current = getActiveLocationSet().toMutableSet()
         current.remove(id)
         prefs.edit().putStringSet(PREF_KEY_ACTIVE_LOCATION_SET, current).apply()
+    }
+
+    private fun getActiveProxySet(): Set<String> = prefs.getStringSet(PREF_KEY_ACTIVE_PROXY_SET, emptySet()) ?: emptySet()
+
+    private fun addToProxySet(ssid: String) {
+        val current = getActiveProxySet().toMutableSet()
+        current.add(ssid)
+        prefs.edit().putStringSet(PREF_KEY_ACTIVE_PROXY_SET, current).apply()
+    }
+
+    private fun removeFromProxySet(ssid: String) {
+        val current = getActiveProxySet().toMutableSet()
+        current.remove(ssid)
+        prefs.edit().putStringSet(PREF_KEY_ACTIVE_PROXY_SET, current).apply()
     }
 
     @android.annotation.SuppressLint("MissingPermission")
@@ -218,7 +233,7 @@ class SilentModeRepository @Inject constructor(
                     requestId = "wifi_proxy_${wifiZone.ssid}",
                     latitude = wifiZone.latitude,
                     longitude = wifiZone.longitude,
-                    radius = 150f
+                    radius = 100f
                 )
             }
         }
@@ -227,6 +242,11 @@ class SilentModeRepository @Inject constructor(
     suspend fun onWifiChanged(currentSsid: String?) {
         val zones = getWifiZonesFlow().first()
         val activeWifiSet = getActiveWifiSet()
+
+        if (currentSsid == android.net.wifi.WifiManager.UNKNOWN_SSID) {
+            android.util.Log.w("SilentModeRepo", "Received UNKNOWN_SSID due to background limits. Deferring disconnect to prevent wrong mode switch.")
+            return
+        }
 
         if (currentSsid != null) {
             val zone = zones.find { it.ssid == currentSsid }
@@ -255,13 +275,16 @@ class SilentModeRepository @Inject constructor(
             val ssid = id.removePrefix("wifi_proxy_")
             if (isEntering) {
                 android.util.Log.d("SilentModeRepo", "Entering WiFi Proxy for $ssid. Starting scan service.")
+                addToProxySet(ssid)
                 try {
                     startMonitoringService("WiFi: $ssid")
                 } catch (e: Exception) {
                     android.util.Log.e("SilentModeRepo", "Failed to start monitoring service: ${e.message}")
                 }
             } else {
-                android.util.Log.d("SilentModeRepo", "Exiting WiFi Proxy for $ssid. Checking restoration.")
+                android.util.Log.d("SilentModeRepo", "Exiting WiFi Proxy for $ssid. Force clearing active WiFi for restoration.")
+                removeFromProxySet(ssid)
+                removeFromWifiSet(ssid)
                 checkAndRestore()
             }
             return
@@ -333,8 +356,9 @@ class SilentModeRepository @Inject constructor(
     private suspend fun checkAndRestore() {
         val activeWifiSet = getActiveWifiSet()
         val activeLocationSet = getActiveLocationSet()
+        val activeProxySet = getActiveProxySet()
 
-        if (activeWifiSet.isEmpty() && activeLocationSet.isEmpty()) {
+        if (activeWifiSet.isEmpty() && activeLocationSet.isEmpty() && activeProxySet.isEmpty()) {
             restoreOriginalMode()
             // If still no mode applied (e.g. no original mode saved), default to NORMAL
             if (getCurrentMode() != RingerMode.NORMAL && prefs.getInt(PREF_KEY_SAVED_MODE, -1) == -1) {
@@ -357,6 +381,11 @@ class SilentModeRepository @Inject constructor(
             // Apply mode from whatever is active (preferring location if both exists)
             val targetMode = locZone?.mode ?: wifiZone?.mode ?: RingerMode.NORMAL
             applyMode(targetMode)
+
+            // If we are only in a proxy area (no active WiFi/Location), show "Searching" notification
+            if (activeWifiSet.isEmpty() && activeLocationSet.isEmpty() && activeProxySet.isNotEmpty()) {
+                startMonitoringService("WiFi: ${activeProxySet.first()}")
+            }
         }
     }
     
@@ -400,7 +429,7 @@ class SilentModeRepository @Inject constructor(
                 requestId = "wifi_proxy_${wifiZone.ssid}",
                 latitude = wifiZone.latitude,
                 longitude = wifiZone.longitude,
-                radius = 150f
+                radius = 100f
             )
         }
     }
@@ -448,12 +477,17 @@ class SilentModeRepository @Inject constructor(
     fun getCurrentSsid(): String? {
         return try {
             val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            var isConnectedButUnknown = false
             
             // Priority 1: ConnectionInfo
             @Suppress("DEPRECATION")
             val info = wifiManager.connectionInfo
-            if (info != null && info.ssid != null && info.ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
-                return info.ssid.trim('"')
+            if (info != null && info.networkId != -1) {
+                if (info.ssid != null && info.ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
+                    return info.ssid.trim('"')
+                } else {
+                    isConnectedButUnknown = true
+                }
             }
             
             // Priority 2: NetworkCapabilities
@@ -461,11 +495,15 @@ class SilentModeRepository @Inject constructor(
             val network = cm.activeNetwork
             val capabilities = cm.getNetworkCapabilities(network)
             val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
-            if (wifiInfo != null && wifiInfo.ssid != null && wifiInfo.ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
-                return wifiInfo.ssid.trim('"')
+            if (wifiInfo != null) {
+                if (wifiInfo.ssid != null && wifiInfo.ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
+                    return wifiInfo.ssid.trim('"')
+                } else {
+                    isConnectedButUnknown = true
+                }
             }
             
-            null
+            if (isConnectedButUnknown) android.net.wifi.WifiManager.UNKNOWN_SSID else null
         } catch (e: Exception) {
             null
         }
