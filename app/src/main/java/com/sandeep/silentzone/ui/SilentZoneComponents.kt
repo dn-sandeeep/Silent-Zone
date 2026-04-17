@@ -714,7 +714,18 @@ fun SsidSelectionBottomSheet(
 
 
 @Composable
-fun ZoneItemCard(ssid: String, onDelete: () -> Unit) {
+fun ZoneItemCard(ssid: String, mode: RingerMode, onDelete: () -> Unit) {
+    val icon = when (mode) {
+        RingerMode.SILENT -> Icons.Default.NotificationsOff
+        RingerMode.VIBRATE -> Icons.Default.Vibration
+        RingerMode.NORMAL -> Icons.Default.NotificationsActive
+    }
+    val color = when (mode) {
+        RingerMode.SILENT -> MaterialTheme.colorScheme.error
+        RingerMode.VIBRATE -> MaterialTheme.colorScheme.secondary
+        RingerMode.NORMAL -> MaterialTheme.colorScheme.primary
+    }
+
     GlassCard(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
         Row(
             modifier = Modifier
@@ -732,13 +743,28 @@ fun ZoneItemCard(ssid: String, onDelete: () -> Unit) {
                     modifier = Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-                        .border(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                        .background(color.copy(alpha = 0.1f))
+                        .border(1.dp, color.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.secondary)
+                    Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
                 }
-                Text(ssid, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                Column {
+                    Text(
+                        text = ssid,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = when(mode) {
+                            RingerMode.SILENT -> "Silent Mode"
+                            RingerMode.VIBRATE -> "Vibrate Mode"
+                            RingerMode.NORMAL -> "Normal Mode"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = color.copy(alpha = 0.7f)
+                    )
+                }
             }
             IconButton(
                 onClick = onDelete,
@@ -992,6 +1018,17 @@ private fun AddTypeMenuItem(
 
 @Composable
 fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
+    val icon = when (zone.mode) {
+        RingerMode.SILENT -> Icons.Default.NotificationsOff
+        RingerMode.VIBRATE -> Icons.Default.Vibration
+        RingerMode.NORMAL -> Icons.Default.NotificationsActive
+    }
+    val color = when (zone.mode) {
+        RingerMode.SILENT -> MaterialTheme.colorScheme.error
+        RingerMode.VIBRATE -> MaterialTheme.colorScheme.secondary
+        RingerMode.NORMAL -> MaterialTheme.colorScheme.primary
+    }
+
     GlassCard(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
         Row(
             modifier = Modifier
@@ -1009,15 +1046,31 @@ fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
                     modifier = Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                        .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
+                        .background(color.copy(alpha = 0.1f))
+                        .border(1.dp, color.copy(alpha = 0.2f), RoundedCornerShape(12.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.LocationOn, null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
                 }
                 Column {
                     Text(zone.name, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                    Text("${zone.radius.toInt()}m range", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = when(zone.mode) {
+                                RingerMode.SILENT -> "Silent"
+                                RingerMode.VIBRATE -> "Vibrate"
+                                RingerMode.NORMAL -> "Normal"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = color,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = " • ${zone.radius.toInt()}m range",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
                 }
             }
             IconButton(
