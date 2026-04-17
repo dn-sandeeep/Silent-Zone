@@ -261,7 +261,7 @@ class SilentZoneService : Service() {
             else -> "Protecting your silence in this area"
         }
 
-        return NotificationCompat.Builder(this, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(displayTitle)
                 .setContentText(contentText)
                 .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
@@ -269,7 +269,12 @@ class SilentZoneService : Service() {
                 .setOngoing(true)
                 .setCategory(NotificationCompat.CATEGORY_SERVICE)
                 .addAction(android.R.drawable.ic_menu_revert, "Restore Now", restorePendingIntent)
-                .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+        }
+
+        return builder.build()
     }
 
     companion object {
