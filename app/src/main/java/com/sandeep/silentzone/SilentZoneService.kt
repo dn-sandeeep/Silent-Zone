@@ -167,7 +167,7 @@ class SilentZoneService : Service() {
             return START_NOT_STICKY
         }
 
-        val zoneName = intent?.getStringExtra(EXTRA_ZONE_NAME) ?: "Active"
+        val zoneName = intent?.getStringExtra(EXTRA_ZONE_NAME) ?: "Monitoring"
         val notification = createNotification(zoneName)
         startForeground(NOTIFICATION_ID, notification)
         return START_STICKY
@@ -247,12 +247,19 @@ class SilentZoneService : Service() {
                 )
 
         val isSearching = zoneName.startsWith("WiFi: ")
-        val displayTitle =
-                if (isSearching) "Searching for WiFi: ${zoneName.removePrefix("WiFi: ")}"
-                else "SilentZone: $zoneName"
-        val contentText =
-                if (isSearching) "Waiting to connect and protect your silence"
-                else "Protecting your silence in this area"
+        val isMonitoring = zoneName == "Monitoring"
+        
+        val displayTitle = when {
+            isSearching -> "Searching for WiFi: ${zoneName.removePrefix("WiFi: ")}"
+            isMonitoring -> "SilentZone: Monitoring"
+            else -> "SilentZone: $zoneName"
+        }
+        
+        val contentText = when {
+            isSearching -> "Waiting to connect and protect your silence"
+            isMonitoring -> "Active and guarding your silence"
+            else -> "Protecting your silence in this area"
+        }
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(displayTitle)

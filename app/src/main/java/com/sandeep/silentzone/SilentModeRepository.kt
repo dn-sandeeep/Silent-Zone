@@ -333,8 +333,10 @@ constructor(
         } else if (activeWifiSet.isNotEmpty()) {
             // Disconnected from WiFi
             activeWifiSet.forEach { removeFromWifiSet(it) }
-            checkAndRestore()
         }
+
+        // Always sync state to ensure persistent monitoring notification is active
+        checkAndRestore()
     }
 
     suspend fun onLocationTransition(id: String, transitionType: Int) {
@@ -469,14 +471,14 @@ constructor(
             )
             restoreOriginalMode()
             registerWifiCallback()
-            stopMonitoringService()
+            startMonitoringService("Monitoring")
         }
         // Priority 3: Nothing active
         else {
-            android.util.Log.d("SilentModeRepo", "Nothing active. Completely clearing state.")
+            android.util.Log.d("SilentModeRepo", "Nothing active. Maintaining persistent monitoring.")
             restoreOriginalMode()
             unregisterWifiCallback()
-            stopMonitoringService()
+            startMonitoringService("Monitoring")
         }
     }
 
