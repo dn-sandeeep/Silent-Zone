@@ -20,42 +20,46 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 @AndroidEntryPoint
 class SilentZoneService : Service() {
 
-    @Inject
-    lateinit var repository: SilentModeRepository
+    @Inject lateinit var repository: SilentModeRepository
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var connectivityManager: ConnectivityManager
 
-    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
-        override fun onAvailable(network: Network) {
-            checkWifiAndApplyMode(network)
-        }
+    private val networkCallback =
+            object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    checkWifiAndApplyMode(network)
+                }
 
-        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
-            checkWifiAndApplyMode(network)
-        }
+                override fun onCapabilitiesChanged(
+                        network: Network,
+                        capabilities: NetworkCapabilities
+                ) {
+                    checkWifiAndApplyMode(network)
+                }
 
-        override fun onLost(network: Network) {
-            checkWifiAndApplyMode(null)
-        }
-    }
-
-    private val ringerModeReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == AudioManager.RINGER_MODE_CHANGED_ACTION) {
-                repository.refreshMode()
+                override fun onLost(network: Network) {
+                    checkWifiAndApplyMode(null)
+                }
             }
-        }
-    }
+
+    private val ringerModeReceiver =
+            object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    if (intent?.action == AudioManager.RINGER_MODE_CHANGED_ACTION) {
+                        repository.refreshMode()
+                    }
+                }
+            }
 
     override fun onCreate() {
         super.onCreate()
@@ -66,9 +70,10 @@ class SilentZoneService : Service() {
     }
 
     private fun registerNetworkCallback() {
-        val networkRequest = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .build()
+        val networkRequest =
+                NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build()
         connectivityManager.registerNetworkCallback(networkRequest, networkCallback)
     }
 
@@ -83,22 +88,28 @@ class SilentZoneService : Service() {
             var attempts = 0
             var finalSsid: String? = null
 
-            // Background retry loop: Android 14 can take a few seconds to "permit" 
+            // Background retry loop: Android 14 can take a few seconds to "permit"
             // the background service to read the real SSID.
             while (attempts < 3) {
                 // 1s first wait, then 3s between retries
                 val delayTime = if (attempts == 0) 1000L else 3000L
                 kotlinx.coroutines.delay(delayTime)
-                
+
                 finalSsid = getCurrentSsid(network)
-                
+
                 if (finalSsid != WifiManager.UNKNOWN_SSID) {
-                    android.util.Log.d("SilentZoneService", "Successfully identified SSID: $finalSsid")
+                    android.util.Log.d(
+                            "SilentZoneService",
+                            "Successfully identified SSID: $finalSsid"
+                    )
                     break
                 }
 
                 attempts++
-                android.util.Log.d("SilentZoneService", "SSID is Unknown (background limit), retrying... ($attempts/3)")
+                android.util.Log.d(
+                        "SilentZoneService",
+                        "SSID is Unknown (background limit), retrying... ($attempts/3)"
+                )
             }
 
             repository.onWifiChanged(finalSsid)
@@ -108,32 +119,38 @@ class SilentZoneService : Service() {
     @SuppressLint("MissingPermission")
     private fun getCurrentSsid(network: Network? = null): String? {
         return try {
-            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val wifiManager =
+                    applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             var isConnectedButUnknown = false
-            
+
             // Priority 1: Legacy API (often more reliable for SSID even on modern Android)
-            @Suppress("DEPRECATION")
-            val info = wifiManager.connectionInfo
+            @Suppress("DEPRECATION") val info = wifiManager.connectionInfo
             if (info != null && info.networkId != -1) {
-                if (info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) {
-                    return info.ssid.trim('"')
+                @Suppress("DEPRECATION")
+                val ssid = info.ssid
+
+                if (ssid != null && ssid != WifiManager.UNKNOWN_SSID) {
+                    return ssid.trim('"')
                 } else {
                     isConnectedButUnknown = true
                 }
             }
-            
+
             // Priority 2: Modern API (NetworkCapabilities)
             val targetNetwork = network ?: connectivityManager.activeNetwork
             val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
             val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
             if (wifiInfo != null) {
-                if (wifiInfo.ssid != null && wifiInfo.ssid != WifiManager.UNKNOWN_SSID) {
-                    return wifiInfo.ssid.trim('"')
+                @Suppress("DEPRECATION")
+                val ssid = wifiInfo.ssid
+
+                if (ssid != null && ssid != WifiManager.UNKNOWN_SSID) {
+                    return ssid.trim('"')
                 } else {
                     isConnectedButUnknown = true
                 }
             }
-            
+
             if (isConnectedButUnknown) WifiManager.UNKNOWN_SSID else null
         } catch (e: Exception) {
             null
@@ -159,15 +176,20 @@ class SilentZoneService : Service() {
     override fun onTaskRemoved(rootIntent: Intent?) {
         val restartServiceIntent = Intent(applicationContext, this.javaClass)
         restartServiceIntent.setPackage(packageName)
-        val restartServicePendingIntent = PendingIntent.getService(
-            applicationContext, 1, restartServiceIntent, 
-            PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
-        )
-        val alarmService = applicationContext.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        val restartServicePendingIntent =
+                PendingIntent.getService(
+                        applicationContext,
+                        1,
+                        restartServiceIntent,
+                        PendingIntent.FLAG_ONE_SHOT or PendingIntent.FLAG_IMMUTABLE
+                )
+        val alarmService =
+                applicationContext.getSystemService(Context.ALARM_SERVICE) as
+                        android.app.AlarmManager
         alarmService.set(
-            android.app.AlarmManager.RTC,
-            System.currentTimeMillis() + 1000,
-            restartServicePendingIntent
+                android.app.AlarmManager.RTC,
+                System.currentTimeMillis() + 1000,
+                restartServicePendingIntent
         )
         super.onTaskRemoved(rootIntent)
     }
@@ -186,53 +208,61 @@ class SilentZoneService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "SilentZone Service",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Keeps SilentZone active in the background"
-                setShowBadge(false)
-            }
+            val channel =
+                    NotificationChannel(
+                                    CHANNEL_ID,
+                                    "SilentZone Service",
+                                    NotificationManager.IMPORTANCE_LOW
+                            )
+                            .apply {
+                                description = "Keeps SilentZone active in the background"
+                                setShowBadge(false)
+                            }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
     }
 
     private fun createNotification(zoneName: String): Notification {
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val intent =
+                Intent(this, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                }
+        val pendingIntent =
+                PendingIntent.getActivity(
+                        this,
+                        0,
+                        intent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
 
-        val restoreIntent = Intent(this, SilentZoneService::class.java).apply {
-            action = ACTION_RESTORE_MODE
-        }
-        val restorePendingIntent = PendingIntent.getService(
-            this, 0, restoreIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val restoreIntent =
+                Intent(this, SilentZoneService::class.java).apply { action = ACTION_RESTORE_MODE }
+        val restorePendingIntent =
+                PendingIntent.getService(
+                        this,
+                        0,
+                        restoreIntent,
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
 
         val isSearching = zoneName.startsWith("WiFi: ")
-        val displayTitle = if (isSearching) "Searching for WiFi: ${zoneName.removePrefix("WiFi: ")}" else "SilentZone: $zoneName"
-        val contentText = if (isSearching) "Waiting to connect and protect your silence" else "Protecting your silence in this area"
+        val displayTitle =
+                if (isSearching) "Searching for WiFi: ${zoneName.removePrefix("WiFi: ")}"
+                else "SilentZone: $zoneName"
+        val contentText =
+                if (isSearching) "Waiting to connect and protect your silence"
+                else "Protecting your silence in this area"
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(displayTitle)
-            .setContentText(contentText)
-            .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
-            .setContentIntent(pendingIntent)
-            .setOngoing(true)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .addAction(
-                android.R.drawable.ic_menu_revert,
-                "Restore Now",
-                restorePendingIntent
-            )
-            .build()
+                .setContentTitle(displayTitle)
+                .setContentText(contentText)
+                .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
+                .setContentIntent(pendingIntent)
+                .setOngoing(true)
+                .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                .addAction(android.R.drawable.ic_menu_revert, "Restore Now", restorePendingIntent)
+                .build()
     }
 
     companion object {

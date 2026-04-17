@@ -42,21 +42,22 @@ class MainActivity : ComponentActivity() {
 
     private lateinit var permissionManager: PermissionManager
 
-    private val pickContactLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == RESULT_OK) {
-            val contactUri = result.data?.data
-            if (contactUri != null) {
-                processPickedContact(contactUri)
+    private val pickContactLauncher =
+            registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+                if (result.resultCode == RESULT_OK) {
+                    val contactUri = result.data?.data
+                    if (contactUri != null) {
+                        processPickedContact(contactUri)
+                    }
+                }
             }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+
         permissionManager = PermissionManager(this)
         permissionManager.requestInitialPermissions()
-        
+
         enableEdgeToEdge()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         fetchCurrentLocation()
@@ -67,75 +68,104 @@ class MainActivity : ComponentActivity() {
                     Surface(Modifier.fillMaxSize()) {
                         val state = vm.uiStateFlow.collectAsStateWithLifecycle().value
                         val opState = vm.operationState.collectAsStateWithLifecycle().value
-                        val availableSsidList = vm.availableSsidList.collectAsStateWithLifecycle().value
+                        val availableSsidList =
+                                vm.availableSsidList.collectAsStateWithLifecycle().value
                         val wifiZones = vm.wifiZones.collectAsStateWithLifecycle().value
                         val locationZones = vm.locationZones.collectAsStateWithLifecycle().value
-                        val importantContacts = vm.importantContacts.collectAsStateWithLifecycle().value
+                        val importantContacts =
+                                vm.importantContacts.collectAsStateWithLifecycle().value
                         val currentWifiSsid = getCurrentSsid()
 
-                        val silentSsids = wifiZones.filter { it.mode == RingerMode.SILENT }.map { it.ssid }.toSet()
-                        val vibrateSsids = wifiZones.filter { it.mode == RingerMode.VIBRATE }.map { it.ssid }.toSet()
-                        val normalSsids = wifiZones.filter { it.mode == RingerMode.NORMAL }.map { it.ssid }.toSet()
+                        val silentSsids =
+                                wifiZones
+                                        .filter { it.mode == RingerMode.SILENT }
+                                        .map { it.ssid }
+                                        .toSet()
+                        val vibrateSsids =
+                                wifiZones
+                                        .filter { it.mode == RingerMode.VIBRATE }
+                                        .map { it.ssid }
+                                        .toSet()
+                        val normalSsids =
+                                wifiZones
+                                        .filter { it.mode == RingerMode.NORMAL }
+                                        .map { it.ssid }
+                                        .toSet()
 
                         SilentScreen(
-                            accessGranted = state.accessGranted,
-                            mode = state.currentMode,
-                            isFallback = state.isFallback,
-                            operationState = opState,
-                            onGrantAccess = {
-                                startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
-                            },
-                            setSilent = vm::setSilent,
-                            setVibrate = vm::setVibrate,
-                            setNormal = vm::setNormal,
-                            addZone = {
-                                // Try scanning if permission is granted; dialog always opens
-                                // so user can use manual SSID entry even without permission.
-                                if (permissionManager.wifiPermissionGranted()) {
-                                    startWifiScan()
-                                } else {
-                                    // Open empty dialog - manual entry will still work.
-                                    vm.updateSsidList(emptyList())
-                                }
-                            },
-                            availableSsidList = availableSsidList,
-                            onSelectedSsid = { ssid, mode -> saveSsid(ssid, mode) },
-                            onDismissDialog = { vm.clearSsidList() },
-                            silentSsids = silentSsids,
-                            vibrateSsids = vibrateSsids,
-                            normalSsids = normalSsids,
-                            onDeleteSsid = { ssid -> vm.removeWifiZone(ssid) },
-                            currentWifiSsid = currentWifiSsid,
-                            locationZones = locationZones,
-                            onAddLocationZone = { mode, radius -> 
-                                if (permissionManager.hasBackgroundPermission()) {
-                                    vm.addCurrentLocationZone(mode, radius)
-                                } else {
-                                    permissionManager.checkAndRequestBackgroundLocation()
-                                }
-                            },
-                            onMapZonesSelected = { zones, mode -> 
-                                if (permissionManager.hasBackgroundPermission()) {
-                                    zones.forEach { zone ->
-                                        vm.addLocationZone(zone.latLng.latitude, zone.latLng.longitude, zone.name, mode, zone.radius)
+                                accessGranted = state.accessGranted,
+                                mode = state.currentMode,
+                                isFallback = state.isFallback,
+                                operationState = opState,
+                                onGrantAccess = {
+                                    startActivity(
+                                            Intent(
+                                                    Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS
+                                            )
+                                    )
+                                },
+                                setSilent = vm::setSilent,
+                                setVibrate = vm::setVibrate,
+                                setNormal = vm::setNormal,
+                                addZone = {
+                                    // Try scanning if permission is granted; dialog always opens
+                                    // so user can use manual SSID entry even without permission.
+                                    if (permissionManager.wifiPermissionGranted()) {
+                                        startWifiScan()
+                                    } else {
+                                        // Open empty dialog - manual entry will still work.
+                                        vm.updateSsidList(emptyList())
                                     }
-                                } else {
-                                    permissionManager.checkAndRequestBackgroundLocation()
-                                }
-                            },
-                            onDeleteLocationZone = { id -> vm.removeLocationZone(id) },
-                            initialUserLocation = currentLocation,
-                            importantContacts = importantContacts,
-                            onPickContact = { handleAddImportantContact() },
-                            onDeleteContact = { phoneNumber -> vm.removeImportantContact(phoneNumber) },
-                            onRequestPermission = { action -> permissionManager.requestLocationPermissions {
-                                action() 
-                            }},
-                            onDisableBatteryOptimization = { permissionManager.requestDisableBatteryOptimization() },
-                            hasBackgroundLocation = state.hasBackgroundLocation,
-                            isIgnoringBatteryOptimizations = state.isIgnoringBatteryOptimizations,
-                            zoneCount = wifiZones.size + locationZones.size,
-                            contactCount = importantContacts.size
+                                },
+                                availableSsidList = availableSsidList,
+                                onSelectedSsid = { ssid, mode -> saveSsid(ssid, mode) },
+                                onDismissDialog = { vm.clearSsidList() },
+                                silentSsids = silentSsids,
+                                vibrateSsids = vibrateSsids,
+                                normalSsids = normalSsids,
+                                onDeleteSsid = { ssid -> vm.removeWifiZone(ssid) },
+                                currentWifiSsid = currentWifiSsid,
+                                locationZones = locationZones,
+                                onAddLocationZone = { mode, radius ->
+                                    if (permissionManager.hasBackgroundPermission()) {
+                                        vm.addCurrentLocationZone(mode, radius)
+                                    } else {
+                                        permissionManager.checkAndRequestBackgroundLocation()
+                                    }
+                                },
+                                onMapZonesSelected = { zones, mode ->
+                                    if (permissionManager.hasBackgroundPermission()) {
+                                        zones.forEach { zone ->
+                                            vm.addLocationZone(
+                                                    zone.latLng.latitude,
+                                                    zone.latLng.longitude,
+                                                    zone.name,
+                                                    mode,
+                                                    zone.radius
+                                            )
+                                        }
+                                    } else {
+                                        permissionManager.checkAndRequestBackgroundLocation()
+                                    }
+                                },
+                                onDeleteLocationZone = { id -> vm.removeLocationZone(id) },
+                                initialUserLocation = currentLocation,
+                                importantContacts = importantContacts,
+                                onPickContact = { handleAddImportantContact() },
+                                onDeleteContact = { phoneNumber ->
+                                    vm.removeImportantContact(phoneNumber)
+                                },
+                                onRequestPermission = { action ->
+                                    permissionManager.requestLocationPermissions { action() }
+                                },
+                                onDisableBatteryOptimization = {
+                                    permissionManager.requestDisableBatteryOptimization()
+                                },
+                                hasBackgroundLocation = state.hasBackgroundLocation,
+                                isIgnoringBatteryOptimizations =
+                                        state.isIgnoringBatteryOptimizations,
+                                zoneCount = wifiZones.size + locationZones.size,
+                                contactCount = importantContacts.size
                         )
                     }
                 }
@@ -144,14 +174,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleAddImportantContact() {
-        permissionManager.requestContactPermissions {
-            openContactPicker()
-        }
+        permissionManager.requestContactPermissions { openContactPicker() }
     }
 
     private fun openContactPicker() {
         try {
-            val intent = Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
+            val intent =
+                    Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
             pickContactLauncher.launch(intent)
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to open contact picker: ${e.message}")
@@ -161,14 +190,25 @@ class MainActivity : ComponentActivity() {
 
     private fun processPickedContact(contactUri: Uri) {
         try {
-            val projection = arrayOf(
-                ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
-                ContactsContract.CommonDataKinds.Phone.NUMBER
-            )
+            val projection =
+                    arrayOf(
+                            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME,
+                            ContactsContract.CommonDataKinds.Phone.NUMBER
+                    )
             contentResolver.query(contactUri, projection, null, null, null)?.use { cursor ->
                 if (cursor.moveToFirst()) {
-                    val name = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME))
-                    val number = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER))
+                    val name =
+                            cursor.getString(
+                                    cursor.getColumnIndexOrThrow(
+                                            ContactsContract.CommonDataKinds.Phone.DISPLAY_NAME
+                                    )
+                            )
+                    val number =
+                            cursor.getString(
+                                    cursor.getColumnIndexOrThrow(
+                                            ContactsContract.CommonDataKinds.Phone.NUMBER
+                                    )
+                            )
                     vm.addImportantContact(name, number)
                 }
             }
@@ -179,9 +219,16 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("MissingPermission")
     private fun fetchCurrentLocation() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) ==
+                        PackageManager.PERMISSION_GRANTED
+        ) {
             fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                if (location != null) currentLocation = com.google.android.gms.maps.model.LatLng(location.latitude, location.longitude)
+                if (location != null)
+                        currentLocation =
+                                com.google.android.gms.maps.model.LatLng(
+                                        location.latitude,
+                                        location.longitude
+                                )
             }
         }
     }
@@ -189,20 +236,52 @@ class MainActivity : ComponentActivity() {
     @SuppressLint("MissingPermission")
     private fun startWifiScan() {
         try {
-            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+            val wifiManager =
+                    applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
             if (!wifiManager.isWifiEnabled) {
-                Toast.makeText(this, "Please turn on WiFi to scan nearby networks", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                                this,
+                                "Please turn on WiFi to scan nearby networks",
+                                Toast.LENGTH_LONG
+                        )
+                        .show()
                 return
             }
-            if (wifiManager.startScan()) {
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    try {
-                        val ssidList = wifiManager.scanResults.map { it.SSID }.filter { it.isNotBlank() && it != "unknown ssid" }.distinct()
-                        if (ssidList.isNotEmpty()) vm.updateSsidList(ssidList)
-                    } catch (e: Exception) {}
-                }, 2000)
+
+            // In modern Android, we don't need to call startScan() as it's heavily throttled.
+            // We can directly get the results cached by the system.
+            val processResults = {
+                try {
+                    val ssidList =
+                            wifiManager.scanResults
+                                    .map { result ->
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            result.wifiSsid.toString().removePrefix("\"").removeSuffix("\"")
+                                        } else {
+                                            @Suppress("DEPRECATION")
+                                            result.SSID
+                                        }
+                                    }
+                                    .filter { it.isNotBlank() && it != "unknown ssid" }
+                                    .distinct()
+                    if (ssidList.isNotEmpty()) vm.updateSsidList(ssidList)
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Error processing scan results: ${e.message}")
+                }
             }
-        } catch (e: Exception) {}
+
+            // We still use a small delay if current results are empty, 
+            // as startScan() might still work on older devices or if not throttled.
+            @Suppress("DEPRECATION")
+            wifiManager.startScan() 
+            
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                processResults()
+            }, 1500)
+
+        } catch (e: Exception) {
+            Log.e("MainActivity", "WiFi scan error: ${e.message}")
+        }
     }
 
     override fun onResume() {
@@ -214,26 +293,37 @@ class MainActivity : ComponentActivity() {
     private fun getCurrentSsid(network: android.net.Network? = null): String? {
         return try {
             if (!permissionManager.wifiPermissionGranted()) return null
-            val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-            
+            val wifiManager =
+                    applicationContext.getSystemService(Context.WIFI_SERVICE) as
+                            android.net.wifi.WifiManager
+
             // Priority 1: Legacy
-            @Suppress("DEPRECATION")
-            val info = wifiManager.connectionInfo
-            if (info != null && info.ssid != null && info.ssid != WifiManager.UNKNOWN_SSID) {
-                return info.ssid.trim('"')
+            @Suppress("DEPRECATION") val info = wifiManager.connectionInfo
+            if (info != null) {
+                @Suppress("DEPRECATION")
+                val ssid = info.ssid
+                if (ssid != null && ssid != WifiManager.UNKNOWN_SSID) {
+                    return ssid.trim('"')
+                }
             }
-            
+
             // Priority 2: Modern (API 29+)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+                val connectivityManager =
+                        getSystemService(Context.CONNECTIVITY_SERVICE) as
+                                android.net.ConnectivityManager
                 val targetNetwork = network ?: connectivityManager.activeNetwork
                 val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
                 val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
-                if (wifiInfo != null && wifiInfo.ssid != null && wifiInfo.ssid != WifiManager.UNKNOWN_SSID) {
-                    return wifiInfo.ssid.trim('"')
+                if (wifiInfo != null) {
+                    @Suppress("DEPRECATION")
+                    val ssid = wifiInfo.ssid
+                    if (ssid != null && ssid != WifiManager.UNKNOWN_SSID) {
+                        return ssid.trim('"')
+                    }
                 }
             }
-            
+
             null
         } catch (e: Exception) {
             null

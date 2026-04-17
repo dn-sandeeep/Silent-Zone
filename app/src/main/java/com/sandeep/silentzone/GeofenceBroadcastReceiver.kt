@@ -48,7 +48,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
                     for (geofence in triggeringGeofences) {
                         repository.onLocationTransition(
                             geofence.requestId, 
-                            geofenceTransition == Geofence.GEOFENCE_TRANSITION_ENTER
+                            geofenceTransition
                         )
                     }
                 } catch (e: Exception) {

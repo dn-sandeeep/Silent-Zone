@@ -70,6 +70,14 @@
             android:enabled="true"
             android:exported="true" />
 
+        <receiver android:name=".NetworkChangeReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.sandeep.silentzone.ACTION_NETWORK_CALLBACK" />
+            </intent-filter>
+        </receiver>
+
         <receiver android:name=".CallReceiver"
             android:enabled="true"
             android:exported="true">

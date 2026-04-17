@@ -215,4 +215,4 @@ class SilentModeViewModel @Inject constructor(
             repo.removeLocationZone(id)
         }
     }
-}
+}

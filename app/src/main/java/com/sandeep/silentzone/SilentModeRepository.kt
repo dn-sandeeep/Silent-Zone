@@ -1,57 +1,62 @@
 package com.sandeep.silentzone
 
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import com.sandeep.silentzone.data.ImportantContactEntity
 import com.sandeep.silentzone.data.LocationZoneEntity
 import com.sandeep.silentzone.data.SilentZoneDao
 import com.sandeep.silentzone.data.WifiZoneEntity
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.flow.*
+import javax.inject.Inject
+import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.SupervisorJob
-import javax.inject.Inject
-import javax.inject.Singleton
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 
 data class LocationZone(
-    val id: String,
-    val latitude: Double,
-    val longitude: Double,
-    val name: String,
-    val radius: Float,
-    val mode: RingerMode = RingerMode.SILENT // Default for migration
+        val id: String,
+        val latitude: Double,
+        val longitude: Double,
+        val name: String,
+        val radius: Float,
+        val mode: RingerMode = RingerMode.SILENT // Default for migration
 )
 
 data class WifiZone(
-    val ssid: String,
-    val mode: RingerMode,
-    val latitude: Double? = null,
-    val longitude: Double? = null
+        val ssid: String,
+        val mode: RingerMode,
+        val latitude: Double? = null,
+        val longitude: Double? = null
 )
 
-data class ImportantContact(
-    val id: String,
-    val name: String,
-    val phoneNumber: String
-)
+data class ImportantContact(val id: String, val name: String, val phoneNumber: String)
 
 @Singleton
-class SilentModeRepository @Inject constructor(
-    @ApplicationContext private val appContext: Context,
-    private val dao: SilentZoneDao,
-    private val geofenceManager: SilentZoneGeofenceManager
+class SilentModeRepository
+@Inject
+constructor(
+        @ApplicationContext private val appContext: Context,
+        private val dao: SilentZoneDao,
+        private val geofenceManager: SilentZoneGeofenceManager
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val audio: AudioManager =
-        appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-    
+            appContext.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+
     private val _currentModeFlow = kotlinx.coroutines.flow.MutableStateFlow(getCurrentMode())
-    val currentModeFlow: kotlinx.coroutines.flow.StateFlow<RingerMode> = _currentModeFlow.asStateFlow()
+    val currentModeFlow: kotlinx.coroutines.flow.StateFlow<RingerMode> =
+            _currentModeFlow.asStateFlow()
+
+    private var isNetworkCallbackRegistered = false
 
     private val _fallbackEvents = kotlinx.coroutines.flow.MutableSharedFlow<Unit>(replay = 0)
     val fallbackEvents = _fallbackEvents.asSharedFlow()
@@ -59,8 +64,11 @@ class SilentModeRepository @Inject constructor(
     fun refreshMode() {
         _currentModeFlow.value = getCurrentMode()
     }
-    
-    private val fusedLocationClient = com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(appContext)
+
+    private val fusedLocationClient =
+            com.google.android.gms.location.LocationServices.getFusedLocationProviderClient(
+                    appContext
+            )
     private val prefs = appContext.getSharedPreferences("silent_zone_prefs", Context.MODE_PRIVATE)
 
     companion object {
@@ -68,10 +76,26 @@ class SilentModeRepository @Inject constructor(
         private const val PREF_KEY_ACTIVE_WIFI_SET = "active_wifi_set"
         private const val PREF_KEY_ACTIVE_LOCATION_SET = "active_location_set"
         private const val PREF_KEY_ACTIVE_PROXY_SET = "active_proxy_set"
+        private const val ACTION_NETWORK_CALLBACK = "com.sandeep.silentzone.ACTION_NETWORK_CALLBACK"
     }
 
-    private fun getActiveWifiSet(): Set<String> = prefs.getStringSet(PREF_KEY_ACTIVE_WIFI_SET, emptySet()) ?: emptySet()
-    private fun getActiveLocationSet(): Set<String> = prefs.getStringSet(PREF_KEY_ACTIVE_LOCATION_SET, emptySet()) ?: emptySet()
+    private val networkPendingIntent: PendingIntent by lazy {
+        val intent =
+                Intent(appContext, NetworkChangeReceiver::class.java).apply {
+                    action = ACTION_NETWORK_CALLBACK
+                }
+        PendingIntent.getBroadcast(
+                appContext,
+                0,
+                intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE
+        )
+    }
+
+    private fun getActiveWifiSet(): Set<String> =
+            prefs.getStringSet(PREF_KEY_ACTIVE_WIFI_SET, emptySet()) ?: emptySet()
+    private fun getActiveLocationSet(): Set<String> =
+            prefs.getStringSet(PREF_KEY_ACTIVE_LOCATION_SET, emptySet()) ?: emptySet()
 
     private fun addToWifiSet(ssid: String) {
         val current = getActiveWifiSet().toMutableSet()
@@ -97,7 +121,8 @@ class SilentModeRepository @Inject constructor(
         prefs.edit().putStringSet(PREF_KEY_ACTIVE_LOCATION_SET, current).apply()
     }
 
-    private fun getActiveProxySet(): Set<String> = prefs.getStringSet(PREF_KEY_ACTIVE_PROXY_SET, emptySet()) ?: emptySet()
+    private fun getActiveProxySet(): Set<String> =
+            prefs.getStringSet(PREF_KEY_ACTIVE_PROXY_SET, emptySet()) ?: emptySet()
 
     private fun addToProxySet(ssid: String) {
         val current = getActiveProxySet().toMutableSet()
@@ -111,39 +136,79 @@ class SilentModeRepository @Inject constructor(
         prefs.edit().putStringSet(PREF_KEY_ACTIVE_PROXY_SET, current).apply()
     }
 
+    private fun registerWifiCallback() {
+        val connectivityManager =
+                appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val request =
+                NetworkRequest.Builder()
+                        .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                        .build()
+        try {
+            // ALWAYS unregister existing ones first to prevent leaks on Samsung
+            try {
+                connectivityManager.unregisterNetworkCallback(networkPendingIntent)
+            } catch (e: Exception) {}
+
+            connectivityManager.registerNetworkCallback(request, networkPendingIntent)
+            isNetworkCallbackRegistered = true
+            android.util.Log.d("SilentModeRepo", "Background WiFi callback registered.")
+        } catch (e: Exception) {
+            android.util.Log.e(
+                    "SilentModeRepo",
+                    "Failed to register background callback: ${e.message}"
+            )
+        }
+    }
+
+    private fun unregisterWifiCallback() {
+        val connectivityManager =
+                appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        try {
+            connectivityManager.unregisterNetworkCallback(networkPendingIntent)
+            isNetworkCallbackRegistered = false
+            android.util.Log.d("SilentModeRepo", "Background WiFi callback unregistered.")
+        } catch (e: Exception) {}
+    }
+
     @android.annotation.SuppressLint("MissingPermission")
     fun getCurrentLocation(onLocationResult: (Double, Double) -> Unit, onError: () -> Unit) {
         // High accuracy request instead of just lastLocation
         val priority = com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY
-        fusedLocationClient.getCurrentLocation(priority, null).addOnSuccessListener { location ->
-             if (location != null) {
-                 onLocationResult(location.latitude, location.longitude)
-             } else {
-                 // Fallback to lastLocation if fresh one fails
-                 fusedLocationClient.lastLocation.addOnSuccessListener { lastLoc ->
-                     if (lastLoc != null) {
-                         onLocationResult(lastLoc.latitude, lastLoc.longitude)
-                     } else {
-                         onError()
-                     }
-                 }.addOnFailureListener { onError() }
-             }
-        }.addOnFailureListener {
-            onError()
-        }
+        fusedLocationClient
+                .getCurrentLocation(priority, null)
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        onLocationResult(location.latitude, location.longitude)
+                    } else {
+                        // Fallback to lastLocation if fresh one fails
+                        fusedLocationClient.lastLocation
+                                .addOnSuccessListener { lastLoc ->
+                                    if (lastLoc != null) {
+                                        onLocationResult(lastLoc.latitude, lastLoc.longitude)
+                                    } else {
+                                        onError()
+                                    }
+                                }
+                                .addOnFailureListener { onError() }
+                    }
+                }
+                .addOnFailureListener { onError() }
     }
 
     fun hasPolicyAccess(): Boolean {
-        val notif = appContext.getSystemService(Context.NOTIFICATION_SERVICE) as android.app.NotificationManager
+        val notif =
+                appContext.getSystemService(Context.NOTIFICATION_SERVICE) as
+                        android.app.NotificationManager
         return notif.isNotificationPolicyAccessGranted
     }
 
-    fun getCurrentMode(): RingerMode = when (audio.ringerMode) {
-        AudioManager.RINGER_MODE_SILENT -> RingerMode.SILENT
-        AudioManager.RINGER_MODE_VIBRATE -> RingerMode.VIBRATE
-        AudioManager.RINGER_MODE_NORMAL -> RingerMode.NORMAL
-        else -> RingerMode.NORMAL
-    }
+    fun getCurrentMode(): RingerMode =
+            when (audio.ringerMode) {
+                AudioManager.RINGER_MODE_SILENT -> RingerMode.SILENT
+                AudioManager.RINGER_MODE_VIBRATE -> RingerMode.VIBRATE
+                AudioManager.RINGER_MODE_NORMAL -> RingerMode.NORMAL
+                else -> RingerMode.NORMAL
+            }
 
     fun saveOriginalMode() {
         if (prefs.getInt(PREF_KEY_SAVED_MODE, -1) == -1) {
@@ -168,9 +233,7 @@ class SilentModeRepository @Inject constructor(
         if (!hasPolicyAccess() && mode == RingerMode.SILENT) {
             targetMode = RingerMode.VIBRATE
             @OptIn(kotlinx.coroutines.DelicateCoroutinesApi::class)
-            GlobalScope.launch(Dispatchers.Main) {
-                _fallbackEvents.emit(Unit)
-            }
+            GlobalScope.launch(Dispatchers.Main) { _fallbackEvents.emit(Unit) }
         }
 
         try {
@@ -201,9 +264,10 @@ class SilentModeRepository @Inject constructor(
     }
 
     private fun startMonitoringService(zoneName: String) {
-        val intent = Intent(appContext, SilentZoneService::class.java).apply {
-            putExtra(SilentZoneService.EXTRA_ZONE_NAME, zoneName)
-        }
+        val intent =
+                Intent(appContext, SilentZoneService::class.java).apply {
+                    putExtra(SilentZoneService.EXTRA_ZONE_NAME, zoneName)
+                }
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             appContext.startForegroundService(intent)
         } else {
@@ -218,7 +282,7 @@ class SilentModeRepository @Inject constructor(
 
     suspend fun reRegisterAllTriggers() {
         android.util.Log.d("SilentModeRepo", "Re-registering all triggers...")
-        
+
         // 1. Re-register Location Zones
         val locationZones = getLocationZones()
         locationZones.forEach { zone ->
@@ -230,10 +294,10 @@ class SilentModeRepository @Inject constructor(
         wifiZones.forEach { wifiZone ->
             if (wifiZone.latitude != null && wifiZone.longitude != null) {
                 geofenceManager.addGeofence(
-                    requestId = "wifi_proxy_${wifiZone.ssid}",
-                    latitude = wifiZone.latitude,
-                    longitude = wifiZone.longitude,
-                    radius = 100f
+                        requestId = "wifi_proxy_${wifiZone.ssid}",
+                        latitude = wifiZone.latitude,
+                        longitude = wifiZone.longitude,
+                        radius = 100f
                 )
             }
         }
@@ -244,7 +308,10 @@ class SilentModeRepository @Inject constructor(
         val activeWifiSet = getActiveWifiSet()
 
         if (currentSsid == android.net.wifi.WifiManager.UNKNOWN_SSID) {
-            android.util.Log.w("SilentModeRepo", "Received UNKNOWN_SSID due to background limits. Deferring disconnect to prevent wrong mode switch.")
+            android.util.Log.w(
+                    "SilentModeRepo",
+                    "Received UNKNOWN_SSID due to background limits. Deferring disconnect to prevent wrong mode switch."
+            )
             return
         }
 
@@ -255,6 +322,7 @@ class SilentModeRepository @Inject constructor(
                     saveOriginalMode()
                     addToWifiSet(currentSsid)
                     applyMode(zone.mode)
+                    unregisterWifiCallback() // Stop background listener, service takes over
                     startMonitoringService(currentSsid)
                 }
             } else if (activeWifiSet.isNotEmpty()) {
@@ -269,20 +337,16 @@ class SilentModeRepository @Inject constructor(
         }
     }
 
-    suspend fun onLocationTransition(id: String, isEntering: Boolean) {
-        android.util.Log.d("SilentModeRepo", "Location Transition: ID=$id, Entering=$isEntering")
+    suspend fun onLocationTransition(id: String, transitionType: Int) {
+        val isEntering =
+                transitionType == com.google.android.gms.location.Geofence.GEOFENCE_TRANSITION_ENTER
+        val activeProxySet = getActiveProxySet()
+
         if (id.startsWith("wifi_proxy_")) {
             val ssid = id.removePrefix("wifi_proxy_")
             if (isEntering) {
-                android.util.Log.d("SilentModeRepo", "Entering WiFi Proxy for $ssid. Starting scan service.")
                 addToProxySet(ssid)
-                try {
-                    startMonitoringService("WiFi: $ssid")
-                } catch (e: Exception) {
-                    android.util.Log.e("SilentModeRepo", "Failed to start monitoring service: ${e.message}")
-                }
             } else {
-                android.util.Log.d("SilentModeRepo", "Exiting WiFi Proxy for $ssid. Force clearing active WiFi for restoration.")
                 removeFromProxySet(ssid)
                 removeFromWifiSet(ssid)
                 checkAndRestore()
@@ -291,12 +355,14 @@ class SilentModeRepository @Inject constructor(
         }
 
         // Use direct DB lookup to avoid race conditions with INITIAL_TRIGGER
-        val entity = dao.getLocationZoneById(id) ?: run {
-            android.util.Log.e("SilentModeRepo", "Zone ID $id not found in DB")
-            return
-        }
+        val entity =
+                dao.getLocationZoneById(id)
+                        ?: run {
+                            android.util.Log.e("SilentModeRepo", "Zone ID $id not found in DB")
+                            return
+                        }
         val zone = entity.toDomain()
-        
+
         val activeLocationSet = getActiveLocationSet()
 
         if (isEntering) {
@@ -306,7 +372,10 @@ class SilentModeRepository @Inject constructor(
             try {
                 startMonitoringService(zone.name)
             } catch (e: Exception) {
-                android.util.Log.e("SilentModeRepo", "Failed to start monitoring service for ${zone.name}: ${e.message}")
+                android.util.Log.e(
+                        "SilentModeRepo",
+                        "Failed to start monitoring service for ${zone.name}: ${e.message}"
+                )
             }
         } else if (activeLocationSet.contains(id)) {
             removeFromLocationSet(id)
@@ -316,10 +385,10 @@ class SilentModeRepository @Inject constructor(
 
     suspend fun syncCurrentState(currentSsid: String?) {
         android.util.Log.d("SilentModeRepo", "Syncing current state (SSID: $currentSsid)...")
-        
+
         // 1. WiFi Sync
         onWifiChanged(currentSsid)
-        
+
         // 2. Location Sync (check if we are in any saved geofence zone)
         // Note: Play Services handles Geofencing, but we can do a manual backup check
         // against last known location to be safe.
@@ -328,18 +397,23 @@ class SilentModeRepository @Inject constructor(
                 scope.launch {
                     val zones = getLocationZones()
                     val activeLocationSet = getActiveLocationSet().toMutableSet()
-                    
+
                     zones.forEach { zone ->
                         val results = FloatArray(1)
                         android.location.Location.distanceBetween(
-                            location.latitude, location.longitude,
-                            zone.latitude, zone.longitude,
-                            results
+                                location.latitude,
+                                location.longitude,
+                                zone.latitude,
+                                zone.longitude,
+                                results
                         )
                         val isInside = results[0] <= zone.radius
-                        
+
                         if (isInside && !activeLocationSet.contains(zone.id)) {
-                            android.util.Log.d("SilentModeRepo", "Sync: Found inside zone ${zone.name}")
+                            android.util.Log.d(
+                                    "SilentModeRepo",
+                                    "Sync: Found inside zone ${zone.name}"
+                            )
                             saveOriginalMode()
                             addToLocationSet(zone.id)
                             applyMode(zone.mode)
@@ -358,42 +432,57 @@ class SilentModeRepository @Inject constructor(
         val activeLocationSet = getActiveLocationSet()
         val activeProxySet = getActiveProxySet()
 
-        if (activeWifiSet.isEmpty() && activeLocationSet.isEmpty() && activeProxySet.isEmpty()) {
-            restoreOriginalMode()
-            // If still no mode applied (e.g. no original mode saved), default to NORMAL
-            if (getCurrentMode() != RingerMode.NORMAL && prefs.getInt(PREF_KEY_SAVED_MODE, -1) == -1) {
-                applyMode(RingerMode.NORMAL)
-            }
-            stopMonitoringService()
-        } else {
-            // Priority: Apply mode from the most recently triggered zone (conceptually)
-            // Or simply any of the active modes (usually SILENT is the goal)
-            val wifiZone = if (activeWifiSet.isNotEmpty()) {
-                val ssid = activeWifiSet.first()
-                getWifiZonesFlow().first().find { it.ssid == ssid }
-            } else null
-            
-            val locZone = if (activeLocationSet.isNotEmpty()) {
-                val id = activeLocationSet.first()
-                getLocationZones().find { it.id == id }
-            } else null
+        android.util.Log.d(
+                "SilentModeRepo",
+                "checkAndRestore: Wifi=${activeWifiSet.size}, Loc=${activeLocationSet.size}, Proxy=${activeProxySet.size}"
+        )
 
-            // Apply mode from whatever is active (preferring location if both exists)
-            val targetMode = locZone?.mode ?: wifiZone?.mode ?: RingerMode.NORMAL
+        // Priority 1: If any SILENT zone is truly ACTIVE
+        if (activeWifiSet.isNotEmpty() || activeLocationSet.isNotEmpty()) {
+            val wifiZone =
+                    if (activeWifiSet.isNotEmpty()) {
+                        val ssid = activeWifiSet.first()
+                        getWifiZonesFlow().first().find { it.ssid == ssid }
+                    } else null
+
+            val locZone =
+                    if (activeLocationSet.isNotEmpty()) {
+                        val id = activeLocationSet.first()
+                        getLocationZones().find { it.id == id }
+                    } else null
+
+            val targetMode = locZone?.mode ?: wifiZone?.mode ?: RingerMode.SILENT
+            val zoneName = locZone?.name ?: wifiZone?.ssid ?: "Active Zone"
+
+            saveOriginalMode()
             applyMode(targetMode)
 
-            // If we are only in a proxy area (no active WiFi/Location), show "Searching" notification
-            if (activeWifiSet.isEmpty() && activeLocationSet.isEmpty() && activeProxySet.isNotEmpty()) {
-                startMonitoringService("WiFi: ${activeProxySet.first()}")
-            }
+            // Clean up background listener when service is active
+            unregisterWifiCallback()
+            startMonitoringService(zoneName)
+        }
+        // Priority 2: If we are ONLY searching (in proximity)
+        else if (activeProxySet.isNotEmpty()) {
+            android.util.Log.d(
+                    "SilentModeRepo",
+                    "In Proxy-only area. Restoring original mode while searching..."
+            )
+            restoreOriginalMode()
+            registerWifiCallback()
+            stopMonitoringService()
+        }
+        // Priority 3: Nothing active
+        else {
+            android.util.Log.d("SilentModeRepo", "Nothing active. Completely clearing state.")
+            restoreOriginalMode()
+            unregisterWifiCallback()
+            stopMonitoringService()
         }
     }
-    
+
     // Location Zone Management
     fun getLocationZonesFlow(): Flow<List<LocationZone>> {
-        return dao.getAllLocationZones().map { entities ->
-            entities.map { it.toDomain() }
-        }
+        return dao.getAllLocationZones().map { entities -> entities.map { it.toDomain() } }
     }
 
     suspend fun getLocationZones(): List<LocationZone> {
@@ -416,9 +505,7 @@ class SilentModeRepository @Inject constructor(
 
     // WiFi Zone Management
     fun getWifiZonesFlow(): Flow<List<WifiZone>> {
-        return dao.getAllWifiZones().map { entities ->
-            entities.map { it.toDomain() }
-        }
+        return dao.getAllWifiZones().map { entities -> entities.map { it.toDomain() } }
     }
 
     suspend fun addWifiZone(wifiZone: WifiZone) {
@@ -426,10 +513,10 @@ class SilentModeRepository @Inject constructor(
         // Add a 150m proxy geofence if coordinates are available
         if (wifiZone.latitude != null && wifiZone.longitude != null) {
             geofenceManager.addGeofence(
-                requestId = "wifi_proxy_${wifiZone.ssid}",
-                latitude = wifiZone.latitude,
-                longitude = wifiZone.longitude,
-                radius = 100f
+                    requestId = "wifi_proxy_${wifiZone.ssid}",
+                    latitude = wifiZone.latitude,
+                    longitude = wifiZone.longitude,
+                    radius = 100f
             )
         }
     }
@@ -445,9 +532,7 @@ class SilentModeRepository @Inject constructor(
 
     // Important Contact Management
     fun getImportantContactsFlow(): Flow<List<ImportantContact>> {
-        return dao.getAllImportantContacts().map { entities ->
-            entities.map { it.toDomain() }
-        }
+        return dao.getAllImportantContacts().map { entities -> entities.map { it.toDomain() } }
     }
 
     suspend fun getImportantContacts(): List<ImportantContact> {
@@ -464,8 +549,8 @@ class SilentModeRepository @Inject constructor(
 
     suspend fun isImportantContact(phoneNumber: String): Boolean {
         val normalizedIncoming = normalizePhoneNumber(phoneNumber)
-        return getImportantContacts().any { 
-            normalizePhoneNumber(it.phoneNumber) == normalizedIncoming 
+        return getImportantContacts().any {
+            normalizePhoneNumber(it.phoneNumber) == normalizedIncoming
         }
     }
 
@@ -476,33 +561,40 @@ class SilentModeRepository @Inject constructor(
     @android.annotation.SuppressLint("MissingPermission")
     fun getCurrentSsid(): String? {
         return try {
-            val wifiManager = appContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            val wifiManager =
+                    appContext.getSystemService(Context.WIFI_SERVICE) as
+                            android.net.wifi.WifiManager
             var isConnectedButUnknown = false
-            
+
             // Priority 1: ConnectionInfo
-            @Suppress("DEPRECATION")
-            val info = wifiManager.connectionInfo
+            @Suppress("DEPRECATION") val info = wifiManager.connectionInfo
             if (info != null && info.networkId != -1) {
-                if (info.ssid != null && info.ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
-                    return info.ssid.trim('"')
+                @Suppress("DEPRECATION")
+                val ssid = info.ssid
+                if (ssid != null && ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
+                    return ssid.trim('"')
                 } else {
                     isConnectedButUnknown = true
                 }
             }
-            
+
             // Priority 2: NetworkCapabilities
-            val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+            val cm =
+                    appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as
+                            android.net.ConnectivityManager
             val network = cm.activeNetwork
             val capabilities = cm.getNetworkCapabilities(network)
             val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
             if (wifiInfo != null) {
-                if (wifiInfo.ssid != null && wifiInfo.ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
-                    return wifiInfo.ssid.trim('"')
+                @Suppress("DEPRECATION")
+                val ssid = wifiInfo.ssid
+                if (ssid != null && ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
+                    return ssid.trim('"')
                 } else {
                     isConnectedButUnknown = true
                 }
             }
-            
+
             if (isConnectedButUnknown) android.net.wifi.WifiManager.UNKNOWN_SSID else null
         } catch (e: Exception) {
             null
@@ -514,22 +606,27 @@ class SilentModeRepository @Inject constructor(
     }
 
     /**
-     * Called when the user turns GPS/Location OFF from system settings.
-     * We clear all active location-based zone activations and restore the original mode,
-     * because we can no longer reliably detect geofence exits.
+     * Called when the user turns GPS/Location OFF from system settings. We clear all active
+     * location-based zone activations and restore the original mode, because we can no longer
+     * reliably detect geofence exits.
      */
     suspend fun onLocationProviderDisabled() {
         val activeLocationSet = getActiveLocationSet()
         if (activeLocationSet.isNotEmpty()) {
-            android.util.Log.d("SilentModeRepo", "Location provider disabled. Clearing ${activeLocationSet.size} active location zones.")
+            android.util.Log.d(
+                    "SilentModeRepo",
+                    "Location provider disabled. Clearing ${activeLocationSet.size} active location zones."
+            )
             activeLocationSet.forEach { removeFromLocationSet(it) }
             checkAndRestore()
         }
     }
 
     // Mappers
-    private fun LocationZoneEntity.toDomain() = LocationZone(id, latitude, longitude, name, radius, mode)
-    private fun LocationZone.toEntity() = LocationZoneEntity(id, latitude, longitude, name, radius, mode)
+    private fun LocationZoneEntity.toDomain() =
+            LocationZone(id, latitude, longitude, name, radius, mode)
+    private fun LocationZone.toEntity() =
+            LocationZoneEntity(id, latitude, longitude, name, radius, mode)
     private fun WifiZoneEntity.toDomain() = WifiZone(ssid, mode, latitude, longitude)
     private fun WifiZone.toEntity() = WifiZoneEntity(ssid, mode, latitude, longitude)
     private fun ImportantContactEntity.toDomain() = ImportantContact(id, name, phoneNumber)
