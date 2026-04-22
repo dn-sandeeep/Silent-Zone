@@ -152,23 +152,6 @@ fun SilentScreen(
                             )
                         )
                     },
-                    navigationIcon = {
-                        IconButton(onClick = { /* App icon/Drawer maybe? */ }) {
-                            Icon(
-                                Icons.Default.Adjust, 
-                                contentDescription = "Logo",
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    },
-                    actions = {
-                        IconButton(onClick = { /* History */ }) {
-                            Icon(Icons.Default.History, contentDescription = "History")
-                        }
-                        IconButton(onClick = { /* Settings */ }) {
-                            Icon(Icons.Default.Settings, contentDescription = "Settings")
-                        }
-                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
                         titleContentColor = MaterialTheme.colorScheme.onBackground,
@@ -321,7 +304,7 @@ fun SilentScreen(
             )
         }
 
-        if (showWifiSelection && availableSsidList.isNotEmpty()) {
+        if (showWifiSelection) {
             SsidSelectionBottomSheet(
                 ssids = availableSsidList,
                 onSsidSelected = { ssid ->

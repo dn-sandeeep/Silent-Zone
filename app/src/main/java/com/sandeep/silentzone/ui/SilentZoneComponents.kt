@@ -88,6 +88,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.geometry.center
+import androidx.compose.ui.graphics.drawscope.rotate
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
@@ -534,6 +536,89 @@ fun PermissionWarningCard(onGrantAccess: () -> Unit) {
     }
 }
 
+@Composable
+fun WifiRadarLoader(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "radar")
+    
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    val alpha1 by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha1"
+    )
+
+    val color = MaterialTheme.colorScheme.secondary
+
+    Box(
+        modifier = modifier
+            .size(160.dp)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = size.center
+            val radius = size.minDimension / 2
+            
+            // Draw rings
+            drawCircle(color = color.copy(alpha = 0.05f), radius = radius, style = Stroke(1.dp.toPx()))
+            drawCircle(color = color.copy(alpha = 0.1f), radius = radius * 0.7f, style = Stroke(1.dp.toPx()))
+            drawCircle(color = color.copy(alpha = 0.15f), radius = radius * 0.4f, style = Stroke(1.dp.toPx()))
+            
+            // Draw sweeping radar
+            rotate(rotation) {
+                drawArc(
+                    brush = Brush.sweepGradient(
+                        0f to Color.Transparent,
+                        0.2f to color.copy(alpha = 0.4f),
+                        0.5f to color.copy(alpha = 0.01f)
+                    ),
+                    startAngle = 0f,
+                    sweepAngle = 180f,
+                    useCenter = true,
+                    size = size
+                )
+                
+                // Leading edge line
+                drawLine(
+                    color = color.copy(alpha = 0.5f),
+                    start = center,
+                    end = center.copy(x = center.x + radius),
+                    strokeWidth = 2.dp.toPx()
+                )
+            }
+        }
+        
+        // Central icon with pulse
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(color.copy(alpha = 0.1f * alpha1), CircleShape)
+                .border(1.dp, color.copy(alpha = 0.2f * alpha1), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Wifi,
+                null,
+                tint = color,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SsidSelectionBottomSheet(
@@ -689,20 +774,22 @@ fun SsidSelectionBottomSheet(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 24.dp),
+                            .padding(vertical = 32.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(28.dp),
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            WifiRadarLoader()
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "Scanning nearby networks...",
+                                "Scanning for nearby networks...",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Please wait a moment",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                             )
                         }
                     }
