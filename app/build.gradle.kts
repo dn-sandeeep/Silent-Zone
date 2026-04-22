@@ -13,14 +13,14 @@ plugins {
 
 android {
     namespace = "com.sandeep.silentzone"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.sandeep.silentzone"
         minSdk = 24
-        targetSdk = 35
-        versionCode = 7
-        versionName = "0.0.4"
+        targetSdk = 36
+        versionCode = 5
+        versionName = "0.0.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         

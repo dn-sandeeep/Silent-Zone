@@ -581,13 +581,13 @@ fun ZonesScreen(
             }
         } else {
             items(silentSsids.toList()) { ssid ->
-                ZoneItemCard(ssid = ssid, mode = RingerMode.SILENT, onDelete = { onDeleteSsid(ssid) })
+                ZoneItemCard(ssid = ssid, onDelete = { onDeleteSsid(ssid) })
             }
             items(vibrateSsids.toList()) { ssid ->
-                ZoneItemCard(ssid = ssid, mode = RingerMode.VIBRATE, onDelete = { onDeleteSsid(ssid) })
+                ZoneItemCard(ssid = ssid, onDelete = { onDeleteSsid(ssid) })
             }
             items(normalSsids.toList()) { ssid ->
-                ZoneItemCard(ssid = ssid, mode = RingerMode.NORMAL, onDelete = { onDeleteSsid(ssid) })
+                ZoneItemCard(ssid = ssid, onDelete = { onDeleteSsid(ssid) })
             }
         }
     }
