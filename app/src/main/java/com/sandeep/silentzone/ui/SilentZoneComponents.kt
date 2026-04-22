@@ -93,6 +93,10 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
+import com.sandeep.silentzone.AnalyticsEvent
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun GlassCard(
@@ -115,6 +119,187 @@ fun GlassCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         content()
+    }
+}
+
+@Composable
+fun AnalyticsSummaryCard(
+    dailyTotalMillis: Long,
+    modifier: Modifier = Modifier
+) {
+    val totalSeconds = dailyTotalMillis / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    
+    GlassCard(modifier = modifier) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Peaceful Time Today",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "Time spent in silent zones",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "total",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                }
+            }
+            
+            // Visual Indicator (Circular Progress-like)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(80.dp)
+            ) {
+                val progress = (dailyTotalMillis.toFloat() / (8 * 3600 * 1000f)).coerceAtMost(1f) // Goal: 8 hours
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawCircle(
+                        color = Color.Gray.copy(alpha = 0.1f),
+                        style = Stroke(width = 8.dp.toPx())
+                    )
+                    drawArc(
+                        color = Color(0xFF6200EE),
+                        startAngle = -90f,
+                        sweepAngle = 360f * progress,
+                        useCenter = false,
+                        style = Stroke(width = 8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                    )
+                }
+                Icon(
+                    Icons.Default.NotificationsPaused,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentActivityList(
+    events: List<AnalyticsEvent>,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            "Recent Activity",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+        
+        if (events.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "No sessions recorded yet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+            }
+        } else {
+            events.forEach { event ->
+                ActivityItem(event)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityItem(event: AnalyticsEvent) {
+    val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    val entryStr = timeFormat.format(Date(event.entryTime))
+    val exitStr = if (event.exitTime != null) timeFormat.format(Date(event.exitTime)) else "Active"
+    
+    val durationMinutes = if (event.exitTime != null) {
+        event.durationMillis / (1000 * 60)
+    } else {
+        (System.currentTimeMillis() - event.entryTime) / (1000 * 60)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    if (event.exitTime == null) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (event.zoneType == "WIFI") Icons.Default.Wifi else Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = if (event.exitTime == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                event.zoneName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                if (event.exitTime == null) "Started at $entryStr" else "$entryStr - $exitStr",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
+        
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                if (durationMinutes > 0) "${durationMinutes}m" else "<1m",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (event.exitTime == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                event.mode.name,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            )
+        }
     }
 }
 

@@ -40,6 +40,16 @@ data class WifiZone(
 
 data class ImportantContact(val id: String, val name: String, val phoneNumber: String)
 
+data class AnalyticsEvent(
+        val id: Long,
+        val zoneName: String,
+        val zoneType: String,
+        val entryTime: Long,
+        val exitTime: Long?,
+        val durationMillis: Long,
+        val mode: RingerMode
+)
+
 @Singleton
 class SilentModeRepository
 @Inject
@@ -322,18 +332,25 @@ constructor(
                     saveOriginalMode()
                     addToWifiSet(currentSsid)
                     applyMode(zone.mode)
+                    logEntry(currentSsid, "WIFI", zone.mode)
                     unregisterWifiCallback() // Stop background listener, service takes over
                     startMonitoringService(currentSsid)
                 }
             } else if (activeWifiSet.isNotEmpty()) {
                 // Not in a saved zone anymore
                 android.util.Log.d("SilentModeRepo", "Exited WiFi zone: $activeWifiSet")
-                activeWifiSet.forEach { removeFromWifiSet(it) }
+                activeWifiSet.forEach {
+                    removeFromWifiSet(it)
+                    logExit(it)
+                }
             }
         } else if (activeWifiSet.isNotEmpty()) {
             // Disconnected from WiFi (currentSsid is null)
             android.util.Log.d("SilentModeRepo", "WiFi disconnected. Clearing active zones.")
-            activeWifiSet.forEach { removeFromWifiSet(it) }
+            activeWifiSet.forEach {
+                removeFromWifiSet(it)
+                logExit(it)
+            }
         }
 
         // Always sync state to ensure persistent monitoring notification is active
@@ -372,6 +389,7 @@ constructor(
             saveOriginalMode()
             addToLocationSet(id)
             applyMode(zone.mode)
+            logEntry(zone.name, "LOCATION", zone.mode)
             try {
                 startMonitoringService(zone.name)
             } catch (e: Exception) {
@@ -382,6 +400,7 @@ constructor(
             }
         } else if (activeLocationSet.contains(id)) {
             removeFromLocationSet(id)
+            logExit(zone.name)
             checkAndRestore()
         }
     }
@@ -476,7 +495,10 @@ constructor(
         }
         // Priority 3: Nothing active
         else {
-            android.util.Log.d("SilentModeRepo", "Nothing active. Maintaining persistent monitoring.")
+            android.util.Log.d(
+                    "SilentModeRepo",
+                    "Nothing active. Maintaining persistent monitoring."
+            )
             restoreOriginalMode()
             unregisterWifiCallback()
             startMonitoringService("Monitoring")
@@ -561,6 +583,62 @@ constructor(
         return phone.replace(Regex("[^0-9+]"), "")
     }
 
+    // Analytics Helpers
+    private suspend fun logEntry(zoneName: String, zoneType: String, mode: RingerMode) {
+        val event =
+                com.sandeep.silentzone.data.AnalyticsEventEntity(
+                        zoneName = zoneName,
+                        zoneType = zoneType,
+                        entryTime = System.currentTimeMillis(),
+                        mode = mode
+                )
+        dao.insertAnalyticsEvent(event)
+    }
+
+    private suspend fun logExit(zoneName: String) {
+        val activeEvent = dao.getActiveEventByZone(zoneName)
+        if (activeEvent != null) {
+            val exitTime = System.currentTimeMillis()
+            val durationMillis = exitTime - activeEvent.entryTime
+            val durationMinutes = durationMillis / 60000
+
+            dao.updateAnalyticsEvent(
+                    activeEvent.copy(exitTime = exitTime, durationMillis = durationMillis)
+            )
+            val bundle =
+                    android.os.Bundle().apply {
+                        putString("zone_name", zoneName)
+                        putString("zone_type", activeEvent.zoneType)
+                        putLong("duration_millis", durationMillis)
+                        putLong("duration_minutes", durationMinutes)
+                    }
+            com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
+                    .logEvent("silent_zone_session", bundle)
+        }
+    }
+
+    fun getRecentAnalyticsFlow(): Flow<List<AnalyticsEvent>> {
+        return dao.getRecentEvents().map { entities -> entities.map { it.toDomain() } }
+    }
+
+    fun getDailyAnalyticsFlow(): Flow<Long> {
+        val startOfDay =
+                java.util.Calendar.getInstance()
+                        .apply {
+                            set(java.util.Calendar.HOUR_OF_DAY, 0)
+                            set(java.util.Calendar.MINUTE, 0)
+                            set(java.util.Calendar.SECOND, 0)
+                        }
+                        .timeInMillis
+
+        return dao.getEventsSince(startOfDay).map { events ->
+            events.sumOf {
+                it.durationMillis +
+                        (if (it.exitTime == null) System.currentTimeMillis() - it.entryTime else 0)
+            }
+        }
+    }
+
     @android.annotation.SuppressLint("MissingPermission")
     fun getCurrentSsid(): String? {
         return try {
@@ -572,8 +650,7 @@ constructor(
             // Priority 1: ConnectionInfo
             @Suppress("DEPRECATION") val info = wifiManager.connectionInfo
             if (info != null && info.networkId != -1) {
-                @Suppress("DEPRECATION")
-                val ssid = info.ssid
+                @Suppress("DEPRECATION") val ssid = info.ssid
                 if (ssid != null && ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
                     return ssid.trim('"')
                 } else {
@@ -589,8 +666,7 @@ constructor(
             val capabilities = cm.getNetworkCapabilities(network)
             val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
             if (wifiInfo != null) {
-                @Suppress("DEPRECATION")
-                val ssid = wifiInfo.ssid
+                @Suppress("DEPRECATION") val ssid = wifiInfo.ssid
                 if (ssid != null && ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {
                     return ssid.trim('"')
                 } else {
@@ -634,4 +710,6 @@ constructor(
     private fun WifiZone.toEntity() = WifiZoneEntity(ssid, mode, latitude, longitude)
     private fun ImportantContactEntity.toDomain() = ImportantContact(id, name, phoneNumber)
     private fun ImportantContact.toEntity() = ImportantContactEntity(id, name, phoneNumber)
+    private fun com.sandeep.silentzone.data.AnalyticsEventEntity.toDomain() =
+            AnalyticsEvent(id, zoneName, zoneType, entryTime, exitTime, durationMillis, mode)
 }

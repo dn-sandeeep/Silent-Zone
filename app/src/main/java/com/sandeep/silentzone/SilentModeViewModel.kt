@@ -174,7 +174,6 @@ class SilentModeViewModel @Inject constructor(
         repo.getCurrentLocation(
             onLocationResult = { lat, lon ->
                 addLocationZone(lat, lon, "Zone ${locationZones.value.size + 1}", mode, radius)
-                // Note: success state is handled inside addLocationZone now to ensure proper sequencing
             },
             onError = {
                 Log.e("SilentModeViewModel", "Could not get current location")
@@ -215,4 +214,10 @@ class SilentModeViewModel @Inject constructor(
             repo.removeLocationZone(id)
         }
     }
+
+    val recentAnalytics: StateFlow<List<AnalyticsEvent>> = repo.getRecentAnalyticsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val dailyPeacefulTime: StateFlow<Long> = repo.getDailyAnalyticsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
 }

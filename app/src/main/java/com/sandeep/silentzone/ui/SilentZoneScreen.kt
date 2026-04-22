@@ -109,7 +109,9 @@ fun SilentScreen(
     hasBackgroundLocation: Boolean,
     isIgnoringBatteryOptimizations: Boolean,
     zoneCount: Int = 0,
-    contactCount: Int = 0
+    contactCount: Int = 0,
+    dailyPeacefulTime: Long = 0,
+    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent> = emptyList()
 ) {
     var selectedScreen by remember { mutableIntStateOf(0) }
     
@@ -249,10 +251,12 @@ fun SilentScreen(
                             currentWifiSsid = currentWifiSsid,
                             hasBackgroundLocation = hasBackgroundLocation,
                             isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations,
-                            onRequestBackgroundLocation = { onRequestPermission { /* Logic handled by manager */ } }, // This needs bridge
+                            onRequestBackgroundLocation = { onRequestPermission { /* Logic handled by manager */ } },
                             onDisableBatteryOptimization = onDisableBatteryOptimization,
                             zoneCount = zoneCount,
-                            contactCount = contactCount
+                            contactCount = contactCount,
+                            dailyPeacefulTime = dailyPeacefulTime,
+                            recentAnalytics = recentAnalytics
                         )
                         1 -> ZonesScreen(
                             silentSsids = silentSsids,
@@ -346,7 +350,9 @@ fun DashboardScreen(
     onRequestBackgroundLocation: () -> Unit,
     onDisableBatteryOptimization: () -> Unit,
     zoneCount: Int,
-    contactCount: Int
+    contactCount: Int,
+    dailyPeacefulTime: Long,
+    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent>
 ) {
     Column(
         modifier = Modifier
@@ -405,6 +411,8 @@ fun DashboardScreen(
                 onRequestBackgroundLocation = onRequestBackgroundLocation,
                 onDisableBatteryOptimization = onDisableBatteryOptimization
             )
+
+            AnalyticsSummaryCard(dailyTotalMillis = dailyPeacefulTime)
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 DashboardSectionHeader("Quick Controls")
@@ -477,39 +485,8 @@ fun DashboardScreen(
                 }
             }
 
-            // Recent Activity Section
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                DashboardSectionHeader("Recent Activity")
-                GlassCard {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        ActivityLogItem(
-                            title = "System Ready",
-                            time = "Active Now",
-                            icon = Icons.Default.AutoAwesome,
-                            iconColor = MaterialTheme.colorScheme.primary
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                        ActivityLogItem(
-                            title = "Smart Zone Tracking",
-                            time = "Monitoring in Background",
-                            icon = Icons.Default.LocationOn,
-                            iconColor = MaterialTheme.colorScheme.secondary
-                        )
-                        if (mode != RingerMode.NORMAL) {
-                            HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f))
-                            ActivityLogItem(
-                                title = "Auto Mode Engaged",
-                                time = "Currently ${when(mode) { RingerMode.SILENT -> "Silent"; RingerMode.VIBRATE -> "Vibrate"; else -> "Normal" }}",
-                                icon = Icons.Default.SmartButton,
-                                iconColor = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
-            }
+            // Real Recent Activity List
+            RecentActivityList(events = recentAnalytics)
             
             Spacer(modifier = Modifier.height(16.dp))
         }
