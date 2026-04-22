@@ -33,6 +33,7 @@ class SilentZoneService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var connectivityManager: ConnectivityManager
+    private var currentZoneName: String? = null
 
     private val networkCallback =
             object : ConnectivityManager.NetworkCallback() {
@@ -126,8 +127,7 @@ class SilentZoneService : Service() {
             // Priority 1: Legacy API (often more reliable for SSID even on modern Android)
             @Suppress("DEPRECATION") val info = wifiManager.connectionInfo
             if (info != null && info.networkId != -1) {
-                @Suppress("DEPRECATION")
-                val ssid = info.ssid
+                @Suppress("DEPRECATION") val ssid = info.ssid
 
                 if (ssid != null && ssid != WifiManager.UNKNOWN_SSID) {
                     return ssid.trim('"')
@@ -141,8 +141,7 @@ class SilentZoneService : Service() {
             val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
             val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
             if (wifiInfo != null) {
-                @Suppress("DEPRECATION")
-                val ssid = wifiInfo.ssid
+                @Suppress("DEPRECATION") val ssid = wifiInfo.ssid
 
                 if (ssid != null && ssid != WifiManager.UNKNOWN_SSID) {
                     return ssid.trim('"')
@@ -168,8 +167,23 @@ class SilentZoneService : Service() {
         }
 
         val zoneName = intent?.getStringExtra(EXTRA_ZONE_NAME) ?: "Monitoring"
-        val notification = createNotification(zoneName)
-        startForeground(NOTIFICATION_ID, notification)
+        
+        // Only update if the zone has changed to prevent notification flickering/vibration
+        if (currentZoneName != zoneName) {
+            currentZoneName = zoneName
+            val notification = createNotification(zoneName)
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    notification,
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                )
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
+            }
+        }
         return START_STICKY
     }
 
@@ -212,7 +226,7 @@ class SilentZoneService : Service() {
                     NotificationChannel(
                                     CHANNEL_ID,
                                     "SilentZone Service",
-                                    NotificationManager.IMPORTANCE_LOW
+                                    NotificationManager.IMPORTANCE_DEFAULT
                             )
                             .apply {
                                 description = "Keeps SilentZone active in the background"
@@ -248,27 +262,36 @@ class SilentZoneService : Service() {
 
         val isSearching = zoneName.startsWith("WiFi: ")
         val isMonitoring = zoneName == "Monitoring"
-        
-        val displayTitle = when {
-            isSearching -> "Searching for WiFi: ${zoneName.removePrefix("WiFi: ")}"
-            isMonitoring -> "SilentZone: Monitoring"
-            else -> "SilentZone: $zoneName"
-        }
-        
-        val contentText = when {
-            isSearching -> "Waiting to connect and protect your silence"
-            isMonitoring -> "Active and guarding your silence"
-            else -> "Protecting your silence in this area"
-        }
 
-        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-                .setContentTitle(displayTitle)
-                .setContentText(contentText)
-                .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .setCategory(NotificationCompat.CATEGORY_SERVICE)
-                .addAction(android.R.drawable.ic_menu_revert, "Restore Now", restorePendingIntent)
+        val displayTitle =
+                when {
+                    isSearching -> "Searching for WiFi: ${zoneName.removePrefix("WiFi: ")}"
+                    isMonitoring -> "SilentZone: Monitoring"
+                    else -> "SilentZone: $zoneName"
+                }
+
+        val contentText =
+                when {
+                    isSearching -> "Waiting to connect and protect your silence"
+                    isMonitoring -> "Active and guarding your silence"
+                    else -> "Protecting your silence in this area"
+                }
+
+        val builder =
+                NotificationCompat.Builder(this, CHANNEL_ID)
+                        .setContentTitle(displayTitle)
+                        .setContentText(contentText)
+                        .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
+                        .setContentIntent(pendingIntent)
+                        .setOngoing(true)
+                        .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                        .setCategory(NotificationCompat.CATEGORY_SERVICE)
+                        .setOnlyAlertOnce(true)
+                        .addAction(
+                                android.R.drawable.ic_menu_revert,
+                                "Restore Now",
+                                restorePendingIntent
+                        )
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             builder.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
@@ -278,7 +301,7 @@ class SilentZoneService : Service() {
     }
 
     companion object {
-        const val CHANNEL_ID = "silent_zone_service_channel"
+        const val CHANNEL_ID = "silent_zone_service_channel_v5"
         const val NOTIFICATION_ID = 1
         const val EXTRA_ZONE_NAME = "extra_zone_name"
         const val ACTION_RESTORE_MODE = "com.sandeep.silentzone.ACTION_RESTORE_MODE"
