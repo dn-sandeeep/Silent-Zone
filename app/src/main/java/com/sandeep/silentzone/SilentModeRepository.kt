@@ -327,11 +327,12 @@ constructor(
                 }
             } else if (activeWifiSet.isNotEmpty()) {
                 // Not in a saved zone anymore
+                android.util.Log.d("SilentModeRepo", "Exited WiFi zone: $activeWifiSet")
                 activeWifiSet.forEach { removeFromWifiSet(it) }
-                checkAndRestore()
             }
         } else if (activeWifiSet.isNotEmpty()) {
-            // Disconnected from WiFi
+            // Disconnected from WiFi (currentSsid is null)
+            android.util.Log.d("SilentModeRepo", "WiFi disconnected. Clearing active zones.")
             activeWifiSet.forEach { removeFromWifiSet(it) }
         }
 
