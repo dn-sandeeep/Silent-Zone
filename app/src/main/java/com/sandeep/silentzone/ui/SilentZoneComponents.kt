@@ -626,8 +626,6 @@ fun SsidSelectionBottomSheet(
     onSsidSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var manualSsid by remember { androidx.compose.runtime.mutableStateOf("") }
-    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -647,85 +645,12 @@ fun SsidSelectionBottomSheet(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                "Select from nearby networks or type SSID manually",
+                "Select a network to silence your phone automatically",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // ── Manual SSID Entry ────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                androidx.compose.material3.OutlinedTextField(
-                    value = manualSsid,
-                    onValueChange = { manualSsid = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text(
-                            "Enter WiFi name (SSID)",
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                        )
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Wifi,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary
-                        )
-                    },
-                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.tertiary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                    ),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
-                    ),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                        onDone = {
-                            keyboardController?.hide()
-                            if (manualSsid.isNotBlank()) onSsidSelected(manualSsid.trim())
-                        }
-                    )
-                )
-                Button(
-                    onClick = {
-                        keyboardController?.hide()
-                        if (manualSsid.isNotBlank()) onSsidSelected(manualSsid.trim())
-                    },
-                    enabled = manualSsid.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    Text("Add", fontWeight = FontWeight.Black)
-                }
-            }
-
             Spacer(modifier = Modifier.height(24.dp))
-
-            // ── Divider ──────────────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
-                Text(
-                    "NEARBY",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    fontWeight = FontWeight.Bold
-                )
-                androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
