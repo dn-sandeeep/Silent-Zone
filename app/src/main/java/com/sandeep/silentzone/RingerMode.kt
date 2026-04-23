@@ -12,5 +12,6 @@ data class UiState(
         val isFallback: Boolean = false,
         val message: String? = null,
         val hasBackgroundLocation: Boolean = true,
-        val isIgnoringBatteryOptimizations: Boolean = true
+        val isIgnoringBatteryOptimizations: Boolean = true,
+        val batteryUsage: BatteryUsage = BatteryUsage(0.0, 0.0, 0.0, 0.0)
 )

@@ -50,6 +50,13 @@ data class AnalyticsEvent(
         val mode: RingerMode
 )
 
+data class BatteryUsage(
+    val totalImpact: Double,
+    val wifiImpact: Double,
+    val locationImpact: Double,
+    val idleImpact: Double
+)
+
 @Singleton
 class SilentModeRepository
 @Inject
@@ -622,21 +629,67 @@ constructor(
     }
 
     fun getDailyAnalyticsFlow(): Flow<Long> {
-        val startOfDay =
-                java.util.Calendar.getInstance()
-                        .apply {
-                            set(java.util.Calendar.HOUR_OF_DAY, 0)
-                            set(java.util.Calendar.MINUTE, 0)
-                            set(java.util.Calendar.SECOND, 0)
-                        }
-                        .timeInMillis
+        val startOfDay = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+        }.timeInMillis
 
         return dao.getEventsSince(startOfDay).map { events ->
             events.sumOf {
-                it.durationMillis +
-                        (if (it.exitTime == null) System.currentTimeMillis() - it.entryTime else 0)
+                it.durationMillis + (if (it.exitTime == null) System.currentTimeMillis() - it.entryTime else 0)
             }
         }
+    }
+
+    fun getBatteryUsageFlow(): Flow<BatteryUsage> {
+        val startOfDay = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+        }.timeInMillis
+
+        return dao.getEventsSince(startOfDay).map { events ->
+            var wifiMillis = 0L
+            var locationMillis = 0L
+            
+            events.forEach { event ->
+                val duration = event.durationMillis + (if (event.exitTime == null) System.currentTimeMillis() - event.entryTime else 0)
+                if (event.zoneType == "WIFI") {
+                    wifiMillis += duration
+                } else {
+                    locationMillis += duration
+                }
+            }
+
+            // Realistic Weights (estimated % per hour)
+            val wifiWeight = 0.015 // 0.015% per hour
+            val locationWeight = 0.08 // 0.08% per hour
+            val idleWeight = 0.005 // 0.005% per hour
+
+            val wifiImpact = (wifiMillis / 3600000.0) * wifiWeight
+            val locationImpact = (locationMillis / 3600000.0) * locationWeight
+            
+            // Total time since start of day
+            val totalTimeMillis = System.currentTimeMillis() - startOfDay
+            val idleMillis = (totalTimeMillis - wifiMillis - locationMillis).coerceAtLeast(0L)
+            val idleImpact = (idleMillis / 3600000.0) * idleWeight
+
+            val totalImpact = wifiImpact + locationImpact + idleImpact
+
+            BatteryUsage(
+                totalImpact = (totalImpact * 100).round(2) / 100.0,
+                wifiImpact = (wifiImpact * 100).round(2) / 100.0,
+                locationImpact = (locationImpact * 100).round(2) / 100.0,
+                idleImpact = (idleImpact * 100).round(2) / 100.0
+            )
+        }
+    }
+
+    private fun Double.round(decimals: Int): Double {
+        var multiplier = 1.0
+        repeat(decimals) { multiplier *= 10 }
+        return kotlin.math.round(this * multiplier) / multiplier
     }
 
     @android.annotation.SuppressLint("MissingPermission")

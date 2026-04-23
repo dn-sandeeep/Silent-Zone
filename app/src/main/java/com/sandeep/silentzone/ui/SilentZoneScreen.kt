@@ -7,6 +7,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -25,6 +28,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Adjust
@@ -43,6 +48,12 @@ import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Feedback
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,10 +65,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.platform.LocalContext
+import com.sandeep.silentzone.utils.FeedbackUtils
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -111,7 +126,8 @@ fun SilentScreen(
     zoneCount: Int = 0,
     contactCount: Int = 0,
     dailyPeacefulTime: Long = 0,
-    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent> = emptyList()
+    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent> = emptyList(),
+    batteryUsage: com.sandeep.silentzone.BatteryUsage = com.sandeep.silentzone.BatteryUsage(0.0, 0.0, 0.0, 0.0)
 ) {
     var selectedScreen by remember { mutableIntStateOf(0) }
     
@@ -125,6 +141,7 @@ fun SilentScreen(
     var showWifiSelection by remember { mutableStateOf(false) }
     var showRadiusDialog by remember { mutableStateOf(false) }
     var radiusSource by remember { mutableStateOf<RadiusSource?>(null) }
+    var showBatteryDetails by remember { mutableStateOf(false) }
 
     if (showMapSelection) {
         val startLocation = initialUserLocation ?: LatLng(20.5937, 78.9629)
@@ -146,6 +163,7 @@ fun SilentScreen(
                                 0 -> "Home"
                                 1 -> "Zones"
                                 2 -> "Safe"
+                                3 -> "Feedback"
                                 else -> "SilentZone"
                             },
                             style = MaterialTheme.typography.headlineSmall.copy(
@@ -211,11 +229,24 @@ fun SilentScreen(
                                 indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                             )
                         )
+                        NavigationBarItem(
+                            selected = selectedScreen == 3,
+                            onClick = { selectedScreen = 3 },
+                            icon = { Icon(Icons.Default.Feedback, null) },
+                            label = { Text("Feedback", fontWeight = FontWeight.Bold) },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                                selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                                indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+                            )
+                        )
                     }
                 }
             },
             floatingActionButton = {
-                if (selectedScreen != 0) {
+                if (selectedScreen == 1 || selectedScreen == 2) {
                     FloatingActionButton(
                         onClick = {
                             if (selectedScreen == 1) showAddTypeDialog = true else onPickContact()
@@ -256,7 +287,11 @@ fun SilentScreen(
                             zoneCount = zoneCount,
                             contactCount = contactCount,
                             dailyPeacefulTime = dailyPeacefulTime,
-                            recentAnalytics = recentAnalytics
+                            recentAnalytics = recentAnalytics,
+                            batteryUsage = batteryUsage,
+                            onNavigateToZones = { selectedScreen = 1 },
+                            onNavigateToWhitelist = { selectedScreen = 2 },
+                            onShowBatteryDetails = { showBatteryDetails = true }
                         )
                         1 -> ZonesScreen(
                             silentSsids = silentSsids,
@@ -270,6 +305,7 @@ fun SilentScreen(
                             contacts = importantContacts,
                             onDeleteContact = onDeleteContact
                         )
+                        3 -> FeedbackScreen()
                     }
                 }
                 // Operation status feedback (Top Layer)
@@ -332,6 +368,13 @@ fun SilentScreen(
                 onDismiss = { pendingSsid = null }
             )
         }
+
+        if (showBatteryDetails) {
+            BatteryDetailsBottomSheet(
+                usage = batteryUsage,
+                onDismiss = { showBatteryDetails = false }
+            )
+        }
     }
 }
 
@@ -352,7 +395,11 @@ fun DashboardScreen(
     zoneCount: Int,
     contactCount: Int,
     dailyPeacefulTime: Long,
-    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent>
+    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent>,
+    batteryUsage: com.sandeep.silentzone.BatteryUsage,
+    onNavigateToZones: () -> Unit,
+    onNavigateToWhitelist: () -> Unit,
+    onShowBatteryDetails: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -376,7 +423,8 @@ fun DashboardScreen(
                         label = "Zones",
                         value = zoneCount.toString(),
                         icon = Icons.Default.Map,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        onClick = onNavigateToZones
                     )
                 }
                 Box(modifier = Modifier.weight(1f)) {
@@ -384,15 +432,17 @@ fun DashboardScreen(
                         label = "Whitelist",
                         value = contactCount.toString(),
                         icon = Icons.Default.VerifiedUser,
-                        color = MaterialTheme.colorScheme.secondary
+                        color = MaterialTheme.colorScheme.secondary,
+                        onClick = onNavigateToWhitelist
                     )
                 }
                 Box(modifier = Modifier.weight(1f)) {
                     StatBubble(
-                        label = "Security",
-                        value = if (accessGranted) "On" else "Off",
-                        icon = if (accessGranted) Icons.Default.GppGood else Icons.Default.GppMaybe,
-                        color = if (accessGranted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                        label = "Battery",
+                        value = "${"%.3f".format(batteryUsage.totalImpact)}%",
+                        icon = Icons.Default.AutoAwesome,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        onClick = onShowBatteryDetails
                     )
                 }
             }
@@ -785,4 +835,181 @@ fun StatusCard(
 
 sealed class RadiusSource {
     object CurrentLocation : RadiusSource()
+}
+
+@Composable
+fun FeedbackScreen() {
+    var rating by remember { mutableIntStateOf(5) }
+    var selectedCategory by remember { mutableStateOf("General") }
+    var message by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    val categories = listOf(
+        "General" to Icons.Default.Feedback,
+        "Bug" to Icons.Default.BugReport,
+        "Feature" to Icons.Default.Lightbulb,
+        "Support" to Icons.Default.QuestionAnswer
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(24.dp)
+    ) {
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Header Illustration/Icon
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.AutoAwesome,
+                contentDescription = null,
+                modifier = Modifier.size(60.dp),
+                tint = MaterialTheme.colorScheme.tertiary
+            )
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                "How's your experience?",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                "Your feedback helps us make SilentZone better.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+        }
+
+        // Star Rating
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            repeat(5) { index ->
+                val starIndex = index + 1
+                IconButton(onClick = { rating = starIndex }) {
+                    Icon(
+                        imageVector = if (starIndex <= rating) Icons.Default.Star else Icons.Default.StarOutline,
+                        contentDescription = null,
+                        modifier = Modifier.size(36.dp),
+                        tint = if (starIndex <= rating) Color(0xFFFFB400) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                    )
+                }
+            }
+        }
+
+        // Category Selection
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            DashboardSectionHeader("Category")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                categories.forEach { (name, icon) ->
+                    val isSelected = selectedCategory == name
+                    Box(modifier = Modifier.weight(1f)) {
+                        CategoryChip(
+                            name = name,
+                            icon = icon,
+                            isSelected = isSelected,
+                            onClick = { selectedCategory = name }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Message Input
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            DashboardSectionHeader("Message")
+            OutlinedTextField(
+                value = message,
+                onValueChange = { message = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 150.dp),
+                placeholder = { Text("Tell us what's on your mind...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)) },
+                shape = RoundedCornerShape(20.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.tertiary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                )
+            )
+        }
+
+        // Submit Button
+        Button(
+            onClick = {
+                FeedbackUtils.sendFeedback(context, rating, selectedCategory, message)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(64.dp),
+            shape = RoundedCornerShape(20.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.tertiary,
+                contentColor = MaterialTheme.colorScheme.onTertiary
+            ),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
+        ) {
+            Text("Send Feedback", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.width(8.dp))
+            Icon(Icons.Default.AutoAwesome, null, modifier = Modifier.size(20.dp))
+        }
+
+        Spacer(modifier = Modifier.height(40.dp))
+    }
+}
+
+@Composable
+fun CategoryChip(
+    name: String,
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .border(
+                1.dp,
+                if (isSelected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                RoundedCornerShape(16.dp)
+            ),
+        color = if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+    ) {
+        Column(
+            modifier = Modifier.padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = if (isSelected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                name,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
+    }
 }

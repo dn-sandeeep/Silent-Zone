@@ -154,7 +154,8 @@ class MainActivity : ComponentActivity() {
                                 zoneCount = wifiZones.size + locationZones.size,
                                 contactCount = importantContacts.size,
                                 dailyPeacefulTime = dailyPeacefulTime,
-                                recentAnalytics = recentAnalytics
+                                recentAnalytics = recentAnalytics,
+                                batteryUsage = state.batteryUsage
                         )
                     }
                 }

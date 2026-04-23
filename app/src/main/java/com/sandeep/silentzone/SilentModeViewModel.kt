@@ -59,15 +59,17 @@ class SilentModeViewModel @Inject constructor(
     val uiStateFlow: StateFlow<UiState> = combine(
         repo.currentModeFlow,
         _message,
-        _isFallback
-    ) { mode, msg, fallback ->
+        _isFallback,
+        repo.getBatteryUsageFlow()
+    ) { mode, msg, fallback, battery ->
         UiState(
             accessGranted = repo.hasPolicyAccess(),
             currentMode = mode,
             isFallback = fallback && !repo.hasPolicyAccess(),
             message = msg,
             hasBackgroundLocation = hasBackgroundLocationPermission(),
-            isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations()
+            isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations(),
+            batteryUsage = battery
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState(repo.hasPolicyAccess(), repo.getCurrentMode(), false, null, true, true))
 
