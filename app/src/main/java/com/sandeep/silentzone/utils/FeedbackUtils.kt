@@ -43,4 +43,25 @@ object FeedbackUtils {
             Toast.makeText(context, "No email client found", Toast.LENGTH_SHORT).show()
         }
     }
+
+    fun shareApp(context: Context) {
+        val shareText = """
+            🔇 Stop worrying about your phone's ringer mode! 
+            
+            I'm using SilentZone to automatically switch between Silent, Vibrate, and Normal modes based on my location and Wi-Fi. 
+            
+            Download it here: https://play.google.com/store/apps/details?id=${context.packageName}
+        """.trimIndent()
+
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_TEXT, shareText)
+        }
+
+        try {
+            context.startActivity(Intent.createChooser(intent, "Share SilentZone via..."))
+        } catch (e: Exception) {
+            Toast.makeText(context, "Unable to share at this time", Toast.LENGTH_SHORT).show()
+        }
+    }
 }

@@ -54,6 +54,7 @@ import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -177,7 +178,17 @@ fun SilentScreen(
                         titleContentColor = MaterialTheme.colorScheme.onBackground,
                         actionIconContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
                         navigationIconContentColor = MaterialTheme.colorScheme.onBackground
-                    )
+                    ),
+                    actions = {
+                        val context = LocalContext.current
+                        IconButton(onClick = { FeedbackUtils.shareApp(context) }) {
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share App",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
                 )
             },
             bottomBar = {
