@@ -111,7 +111,8 @@ fun SilentScreen(
     zoneCount: Int = 0,
     contactCount: Int = 0,
     dailyPeacefulTime: Long = 0,
-    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent> = emptyList()
+    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent> = emptyList(),
+    batteryUsage: com.sandeep.silentzone.BatteryUsage = com.sandeep.silentzone.BatteryUsage(0.0, 0.0, 0.0, 0.0)
 ) {
     var selectedScreen by remember { mutableIntStateOf(0) }
     
@@ -125,6 +126,7 @@ fun SilentScreen(
     var showWifiSelection by remember { mutableStateOf(false) }
     var showRadiusDialog by remember { mutableStateOf(false) }
     var radiusSource by remember { mutableStateOf<RadiusSource?>(null) }
+    var showBatteryDetails by remember { mutableStateOf(false) }
 
     if (showMapSelection) {
         val startLocation = initialUserLocation ?: LatLng(20.5937, 78.9629)
@@ -256,7 +258,11 @@ fun SilentScreen(
                             zoneCount = zoneCount,
                             contactCount = contactCount,
                             dailyPeacefulTime = dailyPeacefulTime,
-                            recentAnalytics = recentAnalytics
+                            recentAnalytics = recentAnalytics,
+                            batteryUsage = batteryUsage,
+                            onNavigateToZones = { selectedScreen = 1 },
+                            onNavigateToWhitelist = { selectedScreen = 2 },
+                            onShowBatteryDetails = { showBatteryDetails = true }
                         )
                         1 -> ZonesScreen(
                             silentSsids = silentSsids,
@@ -332,6 +338,13 @@ fun SilentScreen(
                 onDismiss = { pendingSsid = null }
             )
         }
+
+        if (showBatteryDetails) {
+            BatteryDetailsBottomSheet(
+                usage = batteryUsage,
+                onDismiss = { showBatteryDetails = false }
+            )
+        }
     }
 }
 
@@ -352,7 +365,11 @@ fun DashboardScreen(
     zoneCount: Int,
     contactCount: Int,
     dailyPeacefulTime: Long,
-    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent>
+    recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent>,
+    batteryUsage: com.sandeep.silentzone.BatteryUsage,
+    onNavigateToZones: () -> Unit,
+    onNavigateToWhitelist: () -> Unit,
+    onShowBatteryDetails: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -376,7 +393,8 @@ fun DashboardScreen(
                         label = "Zones",
                         value = zoneCount.toString(),
                         icon = Icons.Default.Map,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        onClick = onNavigateToZones
                     )
                 }
                 Box(modifier = Modifier.weight(1f)) {
@@ -384,15 +402,17 @@ fun DashboardScreen(
                         label = "Whitelist",
                         value = contactCount.toString(),
                         icon = Icons.Default.VerifiedUser,
-                        color = MaterialTheme.colorScheme.secondary
+                        color = MaterialTheme.colorScheme.secondary,
+                        onClick = onNavigateToWhitelist
                     )
                 }
                 Box(modifier = Modifier.weight(1f)) {
                     StatBubble(
-                        label = "Security",
-                        value = if (accessGranted) "On" else "Off",
-                        icon = if (accessGranted) Icons.Default.GppGood else Icons.Default.GppMaybe,
-                        color = if (accessGranted) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error
+                        label = "Battery",
+                        value = "${batteryUsage.totalImpact}%",
+                        icon = Icons.Default.AutoAwesome,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        onClick = onShowBatteryDetails
                     )
                 }
             }

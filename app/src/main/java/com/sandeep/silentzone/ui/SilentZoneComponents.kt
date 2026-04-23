@@ -1286,14 +1286,16 @@ fun StatBubble(
     label: String,
     value: String,
     icon: ImageVector,
-    color: Color
+    color: Color,
+    onClick: (() -> Unit)? = null
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth() // Flexible width
             .clip(RoundedCornerShape(20.dp))
-            .background(color.copy(alpha = 0.3f))
-            .border(1.dp, color.copy(alpha = .8f), RoundedCornerShape(20.dp))
+            .background(color.copy(alpha = 0.15f)) // Lighter background for better contrast
+            .border(1.dp, color.copy(alpha = 0.4f), RoundedCornerShape(20.dp))
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
             .padding(12.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -1385,5 +1387,133 @@ fun MiniEmptyState(
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BatteryDetailsBottomSheet(
+    usage: com.sandeep.silentzone.BatteryUsage,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 48.dp)
+        ) {
+            Text(
+                "Battery Analytics",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                "Estimated impact based on background activity",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+            
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Total Usage Card
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(24.dp))
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.05f))
+                    .border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), RoundedCornerShape(24.dp))
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        "${usage.totalImpact}%",
+                        style = MaterialTheme.typography.displayMedium,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        "Total Impact Today",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                BatteryBreakdownItem(
+                    title = "WiFi Monitoring",
+                    subtitle = "Extremely Efficient",
+                    value = "${usage.wifiImpact}%",
+                    icon = Icons.Default.Wifi,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                BatteryBreakdownItem(
+                    title = "Location Monitoring",
+                    subtitle = "Optimized Geofencing",
+                    value = "${usage.locationImpact}%",
+                    icon = Icons.Default.LocationOn,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                BatteryBreakdownItem(
+                    title = "System Overhead",
+                    subtitle = "Baseline Background Service",
+                    value = "${usage.idleImpact}%",
+                    icon = Icons.Default.Info,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            Text(
+                "* This is an estimation based on active monitoring durations. Actual system reported usage may vary slightly.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+
+@Composable
+private fun BatteryBreakdownItem(
+    title: String,
+    subtitle: String,
+    value: String,
+    icon: ImageVector,
+    color: Color
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(color.copy(alpha = 0.08f))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .background(color.copy(alpha = 0.15f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(icon, null, tint = color, modifier = Modifier.size(20.dp))
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
+        }
+        Text(value, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = color)
     }
 }
