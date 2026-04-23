@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.sandeep.silentzone.RingerMode
 
-@Database(entities = [LocationZoneEntity::class, ImportantContactEntity::class, WifiZoneEntity::class], version = 3, exportSchema = false)
+@Database(entities = [LocationZoneEntity::class, ImportantContactEntity::class, WifiZoneEntity::class, AnalyticsEventEntity::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun silentZoneDao(): SilentZoneDao

@@ -37,4 +37,20 @@ interface SilentZoneDao {
 
     @Query("DELETE FROM wifi_zones WHERE ssid = :ssid")
     suspend fun deleteWifiZoneBySsid(ssid: String)
+
+    // Analytics
+    @Insert
+    suspend fun insertAnalyticsEvent(event: AnalyticsEventEntity): Long
+
+    @Update
+    suspend fun updateAnalyticsEvent(event: AnalyticsEventEntity)
+
+    @Query("SELECT * FROM analytics_events WHERE zoneName = :zoneName AND exitTime IS NULL ORDER BY entryTime DESC LIMIT 1")
+    suspend fun getActiveEventByZone(zoneName: String): AnalyticsEventEntity?
+
+    @Query("SELECT * FROM analytics_events ORDER BY entryTime DESC LIMIT 50")
+    fun getRecentEvents(): Flow<List<AnalyticsEventEntity>>
+
+    @Query("SELECT * FROM analytics_events WHERE entryTime >= :startTime")
+    fun getEventsSince(startTime: Long): Flow<List<AnalyticsEventEntity>>
 }

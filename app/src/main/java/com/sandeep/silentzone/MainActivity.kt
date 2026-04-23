@@ -74,23 +74,13 @@ class MainActivity : ComponentActivity() {
                         val locationZones = vm.locationZones.collectAsStateWithLifecycle().value
                         val importantContacts =
                                 vm.importantContacts.collectAsStateWithLifecycle().value
+                        val recentAnalytics = vm.recentAnalytics.collectAsStateWithLifecycle().value
+                        val dailyPeacefulTime = vm.dailyPeacefulTime.collectAsStateWithLifecycle().value
                         val currentWifiSsid = getCurrentSsid()
 
-                        val silentSsids =
-                                wifiZones
-                                        .filter { it.mode == RingerMode.SILENT }
-                                        .map { it.ssid }
-                                        .toSet()
-                        val vibrateSsids =
-                                wifiZones
-                                        .filter { it.mode == RingerMode.VIBRATE }
-                                        .map { it.ssid }
-                                        .toSet()
-                        val normalSsids =
-                                wifiZones
-                                        .filter { it.mode == RingerMode.NORMAL }
-                                        .map { it.ssid }
-                                        .toSet()
+                        val silentSsids = wifiZones.filter { it.mode == RingerMode.SILENT }.map { it.ssid }.toSet()
+                        val vibrateSsids = wifiZones.filter { it.mode == RingerMode.VIBRATE }.map { it.ssid }.toSet()
+                        val normalSsids = wifiZones.filter { it.mode == RingerMode.NORMAL }.map { it.ssid }.toSet()
 
                         SilentScreen(
                                 accessGranted = state.accessGranted,
@@ -108,12 +98,9 @@ class MainActivity : ComponentActivity() {
                                 setVibrate = vm::setVibrate,
                                 setNormal = vm::setNormal,
                                 addZone = {
-                                    // Try scanning if permission is granted; dialog always opens
-                                    // so user can use manual SSID entry even without permission.
                                     if (permissionManager.wifiPermissionGranted()) {
                                         startWifiScan()
                                     } else {
-                                        // Open empty dialog - manual entry will still work.
                                         vm.updateSsidList(emptyList())
                                     }
                                 },
@@ -165,7 +152,9 @@ class MainActivity : ComponentActivity() {
                                 isIgnoringBatteryOptimizations =
                                         state.isIgnoringBatteryOptimizations,
                                 zoneCount = wifiZones.size + locationZones.size,
-                                contactCount = importantContacts.size
+                                contactCount = importantContacts.size,
+                                dailyPeacefulTime = dailyPeacefulTime,
+                                recentAnalytics = recentAnalytics
                         )
                     }
                 }

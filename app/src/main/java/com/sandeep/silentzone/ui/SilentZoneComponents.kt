@@ -88,9 +88,15 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.geometry.center
+import androidx.compose.ui.graphics.drawscope.rotate
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
+import com.sandeep.silentzone.AnalyticsEvent
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun GlassCard(
@@ -113,6 +119,187 @@ fun GlassCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         content()
+    }
+}
+
+@Composable
+fun AnalyticsSummaryCard(
+    dailyTotalMillis: Long,
+    modifier: Modifier = Modifier
+) {
+    val totalSeconds = dailyTotalMillis / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    
+    GlassCard(modifier = modifier) {
+        Row(
+            modifier = Modifier.padding(20.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "Peaceful Time Today",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    "Time spent in silent zones",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.Bottom) {
+                    Text(
+                        text = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m",
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Black,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "total",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                }
+            }
+            
+            // Visual Indicator (Circular Progress-like)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier.size(80.dp)
+            ) {
+                val progress = (dailyTotalMillis.toFloat() / (8 * 3600 * 1000f)).coerceAtMost(1f) // Goal: 8 hours
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    drawCircle(
+                        color = Color.Gray.copy(alpha = 0.1f),
+                        style = Stroke(width = 8.dp.toPx())
+                    )
+                    drawArc(
+                        color = Color(0xFF6200EE),
+                        startAngle = -90f,
+                        sweepAngle = 360f * progress,
+                        useCenter = false,
+                        style = Stroke(width = 8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                    )
+                }
+                Icon(
+                    Icons.Default.NotificationsPaused,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun RecentActivityList(
+    events: List<AnalyticsEvent>,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            "Recent Activity",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+        
+        if (events.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 32.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    "No sessions recorded yet.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+                )
+            }
+        } else {
+            events.forEach { event ->
+                ActivityItem(event)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActivityItem(event: AnalyticsEvent) {
+    val timeFormat = SimpleDateFormat("hh:mm a", Locale.getDefault())
+    val entryStr = timeFormat.format(Date(event.entryTime))
+    val exitStr = if (event.exitTime != null) timeFormat.format(Date(event.exitTime)) else "Active"
+    
+    val durationMinutes = if (event.exitTime != null) {
+        event.durationMillis / (1000 * 60)
+    } else {
+        (System.currentTimeMillis() - event.entryTime) / (1000 * 60)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(
+                    if (event.exitTime == null) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
+                    CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                if (event.zoneType == "WIFI") Icons.Default.Wifi else Icons.Default.LocationOn,
+                contentDescription = null,
+                tint = if (event.exitTime == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                event.zoneName,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                if (event.exitTime == null) "Started at $entryStr" else "$entryStr - $exitStr",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+            )
+        }
+        
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                if (durationMinutes > 0) "${durationMinutes}m" else "<1m",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = if (event.exitTime == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                event.mode.name,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
+            )
+        }
     }
 }
 
@@ -534,6 +721,89 @@ fun PermissionWarningCard(onGrantAccess: () -> Unit) {
     }
 }
 
+@Composable
+fun WifiRadarLoader(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "radar")
+    
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "rotation"
+    )
+
+    val alpha1 by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1.0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alpha1"
+    )
+
+    val color = MaterialTheme.colorScheme.secondary
+
+    Box(
+        modifier = modifier
+            .size(160.dp)
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val center = size.center
+            val radius = size.minDimension / 2
+            
+            // Draw rings
+            drawCircle(color = color.copy(alpha = 0.05f), radius = radius, style = Stroke(1.dp.toPx()))
+            drawCircle(color = color.copy(alpha = 0.1f), radius = radius * 0.7f, style = Stroke(1.dp.toPx()))
+            drawCircle(color = color.copy(alpha = 0.15f), radius = radius * 0.4f, style = Stroke(1.dp.toPx()))
+            
+            // Draw sweeping radar
+            rotate(rotation) {
+                drawArc(
+                    brush = Brush.sweepGradient(
+                        0f to Color.Transparent,
+                        0.2f to color.copy(alpha = 0.4f),
+                        0.5f to color.copy(alpha = 0.01f)
+                    ),
+                    startAngle = 0f,
+                    sweepAngle = 180f,
+                    useCenter = true,
+                    size = size
+                )
+                
+                // Leading edge line
+                drawLine(
+                    color = color.copy(alpha = 0.5f),
+                    start = center,
+                    end = center.copy(x = center.x + radius),
+                    strokeWidth = 2.dp.toPx()
+                )
+            }
+        }
+        
+        // Central icon with pulse
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .background(color.copy(alpha = 0.1f * alpha1), CircleShape)
+                .border(1.dp, color.copy(alpha = 0.2f * alpha1), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Wifi,
+                null,
+                tint = color,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SsidSelectionBottomSheet(
@@ -541,8 +811,6 @@ fun SsidSelectionBottomSheet(
     onSsidSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var manualSsid by remember { androidx.compose.runtime.mutableStateOf("") }
-    val keyboardController = androidx.compose.ui.platform.LocalSoftwareKeyboardController.current
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -562,85 +830,12 @@ fun SsidSelectionBottomSheet(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                "Select from nearby networks or type SSID manually",
+                "Select a network to silence your phone automatically",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // ── Manual SSID Entry ────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                androidx.compose.material3.OutlinedTextField(
-                    value = manualSsid,
-                    onValueChange = { manualSsid = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = {
-                        Text(
-                            "Enter WiFi name (SSID)",
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
-                        )
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Wifi,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.tertiary
-                        )
-                    },
-                    colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.tertiary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                    ),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        imeAction = androidx.compose.ui.text.input.ImeAction.Done
-                    ),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                        onDone = {
-                            keyboardController?.hide()
-                            if (manualSsid.isNotBlank()) onSsidSelected(manualSsid.trim())
-                        }
-                    )
-                )
-                Button(
-                    onClick = {
-                        keyboardController?.hide()
-                        if (manualSsid.isNotBlank()) onSsidSelected(manualSsid.trim())
-                    },
-                    enabled = manualSsid.isNotBlank(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary
-                    ),
-                    shape = RoundedCornerShape(16.dp),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 16.dp)
-                ) {
-                    Text("Add", fontWeight = FontWeight.Black)
-                }
-            }
-
             Spacer(modifier = Modifier.height(24.dp))
-
-            // ── Divider ──────────────────────────────────────────
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
-                Text(
-                    "NEARBY",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                    fontWeight = FontWeight.Bold
-                )
-                androidx.compose.material3.HorizontalDivider(modifier = Modifier.weight(1f))
-            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -689,20 +884,22 @@ fun SsidSelectionBottomSheet(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(vertical = 24.dp),
+                            .padding(vertical = 32.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.secondary,
-                                modifier = Modifier.size(28.dp),
-                                strokeWidth = 2.dp
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
+                            WifiRadarLoader()
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "Scanning nearby networks...",
+                                "Scanning for nearby networks...",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                "Please wait a moment",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f)
                             )
                         }
                     }
