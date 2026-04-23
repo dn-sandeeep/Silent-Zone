@@ -1433,7 +1433,7 @@ fun BatteryDetailsBottomSheet(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        "${usage.totalImpact}%",
+                        "${"%.3f".format(usage.totalImpact)}%",
                         style = MaterialTheme.typography.displayMedium,
                         fontWeight = FontWeight.Black,
                         color = MaterialTheme.colorScheme.primary
@@ -1452,21 +1452,21 @@ fun BatteryDetailsBottomSheet(
                 BatteryBreakdownItem(
                     title = "WiFi Monitoring",
                     subtitle = "Extremely Efficient",
-                    value = "${usage.wifiImpact}%",
+                    value = "${"%.3f".format(usage.wifiImpact)}%",
                     icon = Icons.Default.Wifi,
                     color = MaterialTheme.colorScheme.secondary
                 )
                 BatteryBreakdownItem(
                     title = "Location Monitoring",
                     subtitle = "Optimized Geofencing",
-                    value = "${usage.locationImpact}%",
+                    value = "${"%.3f".format(usage.locationImpact)}%",
                     icon = Icons.Default.LocationOn,
                     color = MaterialTheme.colorScheme.primary
                 )
                 BatteryBreakdownItem(
                     title = "System Overhead",
                     subtitle = "Baseline Background Service",
-                    value = "${usage.idleImpact}%",
+                    value = "${"%.3f".format(usage.idleImpact)}%",
                     icon = Icons.Default.Info,
                     color = MaterialTheme.colorScheme.outline
                 )

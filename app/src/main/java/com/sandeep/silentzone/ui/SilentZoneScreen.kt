@@ -439,7 +439,7 @@ fun DashboardScreen(
                 Box(modifier = Modifier.weight(1f)) {
                     StatBubble(
                         label = "Battery",
-                        value = "${batteryUsage.totalImpact}%",
+                        value = "${"%.3f".format(batteryUsage.totalImpact)}%",
                         icon = Icons.Default.AutoAwesome,
                         color = MaterialTheme.colorScheme.tertiary,
                         onClick = onShowBatteryDetails
