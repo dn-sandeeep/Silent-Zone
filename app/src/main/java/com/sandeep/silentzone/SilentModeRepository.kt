@@ -93,6 +93,7 @@ constructor(
         private const val PREF_KEY_ACTIVE_WIFI_SET = "active_wifi_set"
         private const val PREF_KEY_ACTIVE_LOCATION_SET = "active_location_set"
         private const val PREF_KEY_ACTIVE_PROXY_SET = "active_proxy_set"
+        private const val PREF_KEY_TOTAL_REPORTED_MILLIS = "total_reported_millis"
         private const val ACTION_NETWORK_CALLBACK = "com.sandeep.silentzone.ACTION_NETWORK_CALLBACK"
     }
 
@@ -621,6 +622,37 @@ constructor(
                     }
             com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
                     .logEvent("silent_zone_session", bundle)
+        }
+    }
+
+    suspend fun reportServiceUsage() {
+        val allEvents = dao.getEventsSinceList(0)
+        val cumulativeTotalMillis = allEvents.sumOf {
+            it.durationMillis + (if (it.exitTime == null) System.currentTimeMillis() - it.entryTime else 0)
+        }
+
+        val lastReported = prefs.getLong(PREF_KEY_TOTAL_REPORTED_MILLIS, 0L)
+        val deltaMillis = cumulativeTotalMillis - lastReported
+
+        // Report if we have at least 1 new minute of usage
+        if (deltaMillis >= 60000) {
+            val deltaMinutes = deltaMillis / 60000
+            val bundle = android.os.Bundle().apply {
+                putLong("minutes", deltaMinutes)
+                putLong("cumulative_minutes", cumulativeTotalMillis / 60000)
+            }
+            
+            com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
+                .logEvent("background_service_usage_heartbeat", bundle)
+
+            // Update baseline (keeping it minute-aligned to avoid rounding drift)
+            prefs.edit().putLong(PREF_KEY_TOTAL_REPORTED_MILLIS, lastReported + (deltaMinutes * 60000)).apply()
+
+            // Update user property for segmentation (Total Hours)
+            com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
+                .setUserProperty("total_service_hours", (cumulativeTotalMillis / 3600000).toString())
+            
+            android.util.Log.d("SilentModeRepo", "Reported $deltaMinutes mins of background usage. Total: ${cumulativeTotalMillis/60000} mins.")
         }
     }
 

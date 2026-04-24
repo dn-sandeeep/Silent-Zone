@@ -22,6 +22,7 @@ class KeepAliveWorker @AssistedInject constructor(
         try {
             Log.d("KeepAliveWorker", "Executing KeepAlive periodic check.")
             repository.syncCurrentState()
+            repository.reportServiceUsage()
             Result.success()
         } catch (e: Exception) {
             Log.e("KeepAliveWorker", "Failed to sync state in KeepAliveWorker: ${e.message}")

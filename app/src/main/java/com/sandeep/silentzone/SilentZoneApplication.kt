@@ -31,6 +31,7 @@ class SilentZoneApplication : Application(), Configuration.Provider {
         // Sync state on cold start
         kotlinx.coroutines.MainScope().launch {
             repository.syncCurrentState()
+            repository.reportServiceUsage()
         }
 
         // Microsoft Clarity Initialization

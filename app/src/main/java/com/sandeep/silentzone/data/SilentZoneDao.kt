@@ -53,4 +53,7 @@ interface SilentZoneDao {
 
     @Query("SELECT * FROM analytics_events WHERE entryTime >= :startTime")
     fun getEventsSince(startTime: Long): Flow<List<AnalyticsEventEntity>>
+
+    @Query("SELECT * FROM analytics_events WHERE entryTime >= :startTime")
+    suspend fun getEventsSinceList(startTime: Long): List<AnalyticsEventEntity>
 }
