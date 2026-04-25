@@ -31,6 +31,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.sandeep.silentzone.ui.SilentScreen
 import com.sandeep.silentzone.ui.theme.SilentZoneTheme
+import com.sandeep.silentzone.utils.AppUpdateHelper
 import com.sandeep.silentzone.utils.PermissionManager
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private var currentLocation: com.google.android.gms.maps.model.LatLng? by mutableStateOf(null)
 
     private lateinit var permissionManager: PermissionManager
+    private lateinit var appUpdateHelper: AppUpdateHelper
 
     private val pickContactLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -57,6 +59,9 @@ class MainActivity : ComponentActivity() {
 
         permissionManager = PermissionManager(this)
         permissionManager.requestInitialPermissions()
+
+        appUpdateHelper = AppUpdateHelper(this)
+        appUpdateHelper.checkForUpdates()
 
         enableEdgeToEdge()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -159,6 +164,16 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+            }
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == AppUpdateHelper.UPDATE_REQUEST_CODE) {
+            if (resultCode != RESULT_OK) {
+                Log.e("MainActivity", "Update flow failed! Result code: $resultCode")
             }
         }
     }
@@ -277,6 +292,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.refresh()
+        appUpdateHelper.checkPendingUpdate()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        appUpdateHelper.unregisterListener()
     }
 
     @SuppressLint("MissingPermission")

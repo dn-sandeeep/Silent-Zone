@@ -14,6 +14,8 @@ import androidx.work.WorkManager
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.Constraints
 import com.sandeep.silentzone.worker.KeepAliveWorker
+import com.sandeep.silentzone.worker.InactivityWorker
+import android.content.Context
 import java.util.concurrent.TimeUnit
 
 @HiltAndroidApp
@@ -42,6 +44,8 @@ class SilentZoneApplication : Application(), Configuration.Provider {
         Clarity.initialize(applicationContext, config)
         //Clarity.setCurrentMaskingLevel(MaskingLevel.Relaxed)
         setupKeepAliveWorker()
+        setupInactivityWorker()
+        updateLastLaunchTimestamp()
     }
 
     private fun setupKeepAliveWorker() {
@@ -58,6 +62,22 @@ class SilentZoneApplication : Application(), Configuration.Provider {
             ExistingPeriodicWorkPolicy.KEEP,
             keepAliveWorkRequest
         )
+    }
+
+    private fun setupInactivityWorker() {
+        val inactivityWorkRequest = PeriodicWorkRequestBuilder<InactivityWorker>(24, TimeUnit.HOURS)
+            .build()
+            
+        WorkManager.getInstance(applicationContext).enqueueUniquePeriodicWork(
+            InactivityWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
+            inactivityWorkRequest
+        )
+    }
+
+    private fun updateLastLaunchTimestamp() {
+        val sharedPrefs = getSharedPreferences("silent_zone_prefs", Context.MODE_PRIVATE)
+        sharedPrefs.edit().putLong("last_launch_timestamp", System.currentTimeMillis()).apply()
     }
 
     override val workManagerConfiguration: Configuration
