@@ -31,6 +31,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.sandeep.silentzone.ui.SilentScreen
 import com.sandeep.silentzone.ui.theme.SilentZoneTheme
+import com.sandeep.silentzone.utils.AppUpdateHelper
 import com.sandeep.silentzone.utils.PermissionManager
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -41,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private var currentLocation: com.google.android.gms.maps.model.LatLng? by mutableStateOf(null)
 
     private lateinit var permissionManager: PermissionManager
+    private lateinit var appUpdateHelper: AppUpdateHelper
 
     private val pickContactLauncher =
             registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -57,6 +59,12 @@ class MainActivity : ComponentActivity() {
 
         permissionManager = PermissionManager(this)
         permissionManager.requestInitialPermissions()
+
+        appUpdateHelper = AppUpdateHelper(this)
+        appUpdateHelper.onUpdateDownloaded = {
+            vm.setUpdateReadyToInstall(true)
+        }
+        appUpdateHelper.checkForUpdates()
 
         enableEdgeToEdge()
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -148,6 +156,10 @@ class MainActivity : ComponentActivity() {
                                 onDisableBatteryOptimization = {
                                     permissionManager.requestDisableBatteryOptimization()
                                 },
+                                onNavigateToZones = { vm.logNavigateToZones() },
+                                onLogClickCreateZone = { vm.logClickCreateZone() },
+                                onCompleteUpdate = { appUpdateHelper.completeUpdate() },
+                                updateReadyToInstall = vm.updateReadyToInstall.collectAsStateWithLifecycle().value,
                                 hasBackgroundLocation = state.hasBackgroundLocation,
                                 isIgnoringBatteryOptimizations =
                                         state.isIgnoringBatteryOptimizations,
@@ -158,6 +170,20 @@ class MainActivity : ComponentActivity() {
                                 batteryUsage = state.batteryUsage
                         )
                     }
+                }
+            }
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == AppUpdateHelper.UPDATE_REQUEST_CODE) {
+            if (resultCode != RESULT_OK) {
+                Log.e("MainActivity", "Update flow failed! Result code: $resultCode")
+                if (appUpdateHelper.isImmediateUpdateInProgress) {
+                    Log.d("MainActivity", "Immediate update cancelled. Closing app.")
+                    finish()
                 }
             }
         }
@@ -277,6 +303,12 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.refresh()
+        appUpdateHelper.checkPendingUpdate()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        appUpdateHelper.unregisterListener()
     }
 
     @SuppressLint("MissingPermission")

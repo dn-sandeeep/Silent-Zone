@@ -24,6 +24,7 @@ sealed class OperationState {
 @HiltViewModel
 class SilentModeViewModel @Inject constructor(
     private val repo: SilentModeRepository,
+    private val analytics: com.sandeep.silentzone.utils.AnalyticsHelper,
     @ApplicationContext private val appContext: Context
 ) : ViewModel() {
     private val _operationState = MutableStateFlow<OperationState>(OperationState.Idle)
@@ -34,7 +35,14 @@ class SilentModeViewModel @Inject constructor(
     private val _availableSsidList = MutableStateFlow<List<String>>(emptyList())
     val availableSsidList: StateFlow<List<String>> = _availableSsidList.asStateFlow()
 
+    private val prefs = appContext.getSharedPreferences("analytics_prefs", Context.MODE_PRIVATE)
+
     init {
+        // Initial DND permission check
+        val isGranted = repo.hasPolicyAccess()
+        analytics.logDndPermissionStatus(isGranted)
+        prefs.edit().putBoolean("last_dnd_status", isGranted).apply()
+
         // Handle DND Fallback events
         viewModelScope.launch {
             repo.fallbackEvents.collect {
@@ -91,6 +99,22 @@ class SilentModeViewModel @Inject constructor(
 
     fun refresh() {
         repo.refreshMode()
+        
+        // Track DND permission status change
+        val currentStatus = repo.hasPolicyAccess()
+        val lastStatus = prefs.getBoolean("last_dnd_status", false)
+        if (currentStatus != lastStatus) {
+            analytics.logDndPermissionStatus(currentStatus)
+            prefs.edit().putBoolean("last_dnd_status", currentStatus).apply()
+        }
+    }
+
+    fun logNavigateToZones() {
+        analytics.logNavigateToZones()
+    }
+
+    fun logClickCreateZone() {
+        analytics.logClickCreateZone()
     }
 
     private fun launchOperation(message: String, action: suspend () -> Unit) {
@@ -222,4 +246,11 @@ class SilentModeViewModel @Inject constructor(
 
     val dailyPeacefulTime: StateFlow<Long> = repo.getDailyAnalyticsFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    private val _updateReadyToInstall = MutableStateFlow(false)
+    val updateReadyToInstall: StateFlow<Boolean> = _updateReadyToInstall.asStateFlow()
+
+    fun setUpdateReadyToInstall(ready: Boolean) {
+        _updateReadyToInstall.value = ready
+    }
 }

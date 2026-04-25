@@ -19,8 +19,8 @@ android {
         applicationId = "com.sandeep.silentzone"
         minSdk = 24
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.0.5"
+        versionCode = 9
+        versionName = "0.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -87,19 +87,18 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.androidx.compose.foundation)
-    //implementation(libs.microsoft.clarity)
+    implementation(libs.microsoft.clarity)
 
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
+    implementation("com.google.firebase:firebase-config-ktx")
 
-// Microsoft Clarity
-    implementation(libs.clarity)
-
-    // Hilt
+    // Room
     implementation(libs.hilt.android)
     implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.compose.material3)
     ksp(libs.hilt.compiler)
     ksp(libs.hilt.ext.compiler)
     implementation(libs.hilt.navigation.compose)
@@ -112,6 +111,8 @@ dependencies {
     // WorkManager
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.hilt.work)
+    implementation(libs.play.app.update.ktx)
+    implementation(libs.google.material)
 
     // Testing
     testImplementation(libs.junit)

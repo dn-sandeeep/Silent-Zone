@@ -38,6 +38,12 @@ interface SilentZoneDao {
     @Query("DELETE FROM wifi_zones WHERE ssid = :ssid")
     suspend fun deleteWifiZoneBySsid(ssid: String)
 
+    @Query("SELECT COUNT(*) FROM location_zones")
+    suspend fun getLocationZonesCount(): Int
+
+    @Query("SELECT COUNT(*) FROM wifi_zones")
+    suspend fun getWifiZonesCount(): Int
+
     // Analytics
     @Insert
     suspend fun insertAnalyticsEvent(event: AnalyticsEventEntity): Long
@@ -53,4 +59,7 @@ interface SilentZoneDao {
 
     @Query("SELECT * FROM analytics_events WHERE entryTime >= :startTime")
     fun getEventsSince(startTime: Long): Flow<List<AnalyticsEventEntity>>
+
+    @Query("SELECT * FROM analytics_events WHERE entryTime >= :startTime")
+    suspend fun getEventsSinceList(startTime: Long): List<AnalyticsEventEntity>
 }
