@@ -49,8 +49,10 @@ import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
@@ -163,7 +165,7 @@ fun SilentScreen(
                             text = when (selectedScreen) {
                                 0 -> "Home"
                                 1 -> "Zones"
-                                2 -> "Safe"
+                                2 -> "Contacts"
                                 3 -> "Feedback"
                                 else -> "SilentZone"
                             },
@@ -230,8 +232,8 @@ fun SilentScreen(
                         NavigationBarItem(
                             selected = selectedScreen == 2,
                             onClick = { selectedScreen = 2 },
-                            icon = { Icon(Icons.Default.VerifiedUser, null) },
-                            label = { Text("Safe", fontWeight = FontWeight.Bold) },
+                            icon = { Icon(Icons.Default.Phone, null) },
+                            label = { Text("Contacts", fontWeight = FontWeight.Bold) },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = MaterialTheme.colorScheme.primary,
                                 selectedTextColor = MaterialTheme.colorScheme.primary,
@@ -693,7 +695,7 @@ fun SafeEmptyState() {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.VerifiedUser,
+                Icons.Default.Contacts,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(48.dp)
@@ -706,7 +708,7 @@ fun SafeEmptyState() {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                "Emergency Whitelist",
+                "Important Contacts",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Black,
                 color = MaterialTheme.colorScheme.onSurface
