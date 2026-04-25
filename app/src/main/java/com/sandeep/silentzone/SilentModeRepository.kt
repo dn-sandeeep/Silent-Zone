@@ -663,6 +663,36 @@ constructor(
         }
     }
 
+    suspend fun reportServiceUptimeHeartbeat() {
+        val servicePrefs = appContext.getSharedPreferences("service_prefs", Context.MODE_PRIVATE)
+        val startTime = servicePrefs.getLong("service_start_time", 0L)
+
+        if (startTime == 0L) return
+
+        val currentTime = System.currentTimeMillis()
+        val deltaMillis = currentTime - startTime
+
+        // Report if we have at least 5 minutes of new usage
+        if (deltaMillis >= 5 * 60 * 1000) {
+            val deltaMinutes = deltaMillis / 60000
+
+            val bundle = android.os.Bundle().apply {
+                putLong("uptime_minutes_delta", deltaMinutes)
+            }
+            com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
+                .logEvent("service_uptime_heartbeat", bundle)
+
+            val cumulativeTotalMillis = servicePrefs.getLong("cumulative_service_uptime_millis", 0L) + deltaMillis
+            servicePrefs.edit().putLong("cumulative_service_uptime_millis", cumulativeTotalMillis).apply()
+
+            com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
+                .setUserProperty("total_service_uptime_hours", (cumulativeTotalMillis / 3600000).toString())
+
+            servicePrefs.edit().putLong("service_start_time", currentTime).apply()
+            android.util.Log.d("SilentModeRepo", "Reported $deltaMinutes mins of service uptime. Total: ${cumulativeTotalMillis/3600000} hours.")
+        }
+    }
+
     fun getRecentAnalyticsFlow(): Flow<List<AnalyticsEvent>> {
         return dao.getRecentEvents().map { entities -> entities.map { it.toDomain() } }
     }
