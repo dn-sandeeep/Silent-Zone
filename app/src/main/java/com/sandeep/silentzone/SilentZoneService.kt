@@ -174,12 +174,25 @@ class SilentZoneService : Service() {
             val notification = createNotification(zoneName)
             
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    notification,
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
-                )
+                try {
+                    startForeground(
+                        NOTIFICATION_ID,
+                        notification,
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION or
+                        android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                    )
+                } catch (e: SecurityException) {
+                    android.util.Log.w("SilentZoneService", "Failed to start FGS with location type, falling back to specialUse: ${e.message}")
+                    try {
+                        startForeground(
+                            NOTIFICATION_ID,
+                            notification,
+                            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+                        )
+                    } catch (e2: Exception) {
+                        android.util.Log.e("SilentZoneService", "Failed to start FGS even with specialUse: ${e2.message}")
+                    }
+                }
             } else {
                 startForeground(NOTIFICATION_ID, notification)
             }

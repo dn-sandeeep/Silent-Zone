@@ -286,10 +286,17 @@ constructor(
                 Intent(appContext, SilentZoneService::class.java).apply {
                     putExtra(SilentZoneService.EXTRA_ZONE_NAME, zoneName)
                 }
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-            appContext.startForegroundService(intent)
-        } else {
-            appContext.startService(intent)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                appContext.startForegroundService(intent)
+            } else {
+                appContext.startService(intent)
+            }
+        } catch (e: Exception) {
+            android.util.Log.e(
+                    "SilentModeRepo",
+                    "Failed to start monitoring service for $zoneName: ${e.message}"
+            )
         }
     }
 

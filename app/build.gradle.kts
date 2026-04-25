@@ -87,15 +87,12 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.androidx.compose.foundation)
-    //implementation(libs.microsoft.clarity)
+    implementation(libs.microsoft.clarity)
 
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
-
-// Microsoft Clarity
-    implementation(libs.clarity)
 
     // Hilt
     implementation(libs.hilt.android)
