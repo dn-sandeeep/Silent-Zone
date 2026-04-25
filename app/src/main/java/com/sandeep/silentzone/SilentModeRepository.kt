@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.os.BatteryManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -63,7 +64,8 @@ class SilentModeRepository
 constructor(
         @ApplicationContext private val appContext: Context,
         private val dao: SilentZoneDao,
-        private val geofenceManager: SilentZoneGeofenceManager
+        private val geofenceManager: SilentZoneGeofenceManager,
+        private val analytics: com.sandeep.silentzone.utils.AnalyticsHelper
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val audio: AudioManager =
@@ -247,6 +249,7 @@ constructor(
     }
 
     private fun applyMode(mode: RingerMode) {
+        val previousMode = getCurrentMode()
         var targetMode = mode
         if (!hasPolicyAccess() && mode == RingerMode.SILENT) {
             targetMode = RingerMode.VIBRATE
@@ -261,6 +264,11 @@ constructor(
                 RingerMode.NORMAL -> audio.ringerMode = AudioManager.RINGER_MODE_NORMAL
             }
             refreshMode()
+            
+            val newMode = getCurrentMode()
+            if (previousMode != newMode) {
+                analytics.logModeTransition(previousMode.name, newMode.name)
+            }
         } catch (e: Exception) {
             android.util.Log.e("SilentModeRepo", "Failed to apply mode $targetMode: ${e.message}")
         }
@@ -652,6 +660,18 @@ constructor(
             com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
                 .logEvent("background_service_usage_heartbeat", bundle)
 
+            // Log estimated battery impact and total zones
+            val batteryUsage = getBatteryUsageFlow().first()
+            analytics.logEstimatedBatteryImpact(
+                batteryUsage.totalImpact,
+                batteryUsage.wifiImpact,
+                batteryUsage.locationImpact
+            )
+
+            val wifiCount = dao.getWifiZonesCount()
+            val locationCount = dao.getLocationZonesCount()
+            analytics.logTotalZones(wifiCount, locationCount)
+
             // Update baseline (keeping it minute-aligned to avoid rounding drift)
             prefs.edit().putLong(PREF_KEY_TOTAL_REPORTED_MILLIS, lastReported + (deltaMinutes * 60000)).apply()
 
@@ -660,6 +680,36 @@ constructor(
                 .setUserProperty("total_service_hours", (cumulativeTotalMillis / 3600000).toString())
             
             android.util.Log.d("SilentModeRepo", "Reported $deltaMinutes mins of background usage. Total: ${cumulativeTotalMillis/60000} mins.")
+        }
+    }
+
+    suspend fun reportServiceUptimeHeartbeat() {
+        val servicePrefs = appContext.getSharedPreferences("service_prefs", Context.MODE_PRIVATE)
+        val startTime = servicePrefs.getLong("service_start_time", 0L)
+
+        if (startTime == 0L) return
+
+        val currentTime = System.currentTimeMillis()
+        val deltaMillis = currentTime - startTime
+
+        // Report if we have at least 5 minutes of new usage
+        if (deltaMillis >= 5 * 60 * 1000) {
+            val deltaMinutes = deltaMillis / 60000
+
+            val bundle = android.os.Bundle().apply {
+                putLong("uptime_minutes_delta", deltaMinutes)
+            }
+            com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
+                .logEvent("service_uptime_heartbeat", bundle)
+
+            val cumulativeTotalMillis = servicePrefs.getLong("cumulative_service_uptime_millis", 0L) + deltaMillis
+            servicePrefs.edit().putLong("cumulative_service_uptime_millis", cumulativeTotalMillis).apply()
+
+            com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
+                .setUserProperty("total_service_uptime_hours", (cumulativeTotalMillis / 3600000).toString())
+
+            servicePrefs.edit().putLong("service_start_time", currentTime).apply()
+            android.util.Log.d("SilentModeRepo", "Reported $deltaMinutes mins of service uptime. Total: ${cumulativeTotalMillis/3600000} hours.")
         }
     }
 

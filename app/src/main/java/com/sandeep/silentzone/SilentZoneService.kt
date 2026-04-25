@@ -64,6 +64,10 @@ class SilentZoneService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        val servicePrefs = getSharedPreferences("service_prefs", Context.MODE_PRIVATE)
+        if (servicePrefs.getLong("service_start_time", 0L) == 0L) {
+            servicePrefs.edit().putLong("service_start_time", System.currentTimeMillis()).apply()
+        }
         createNotificationChannel()
         connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         registerNetworkCallback()
@@ -223,6 +227,11 @@ class SilentZoneService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceScope.launch {
+            repository.reportServiceUptimeHeartbeat()
+            getSharedPreferences("service_prefs", Context.MODE_PRIVATE)
+                .edit().putLong("service_start_time", 0L).apply()
+        }
         try {
             connectivityManager.unregisterNetworkCallback(networkCallback)
         } catch (e: Exception) {}

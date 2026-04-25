@@ -153,6 +153,8 @@ class MainActivity : ComponentActivity() {
                                 onDisableBatteryOptimization = {
                                     permissionManager.requestDisableBatteryOptimization()
                                 },
+                                onNavigateToZones = { vm.logNavigateToZones() },
+                                onLogClickCreateZone = { vm.logClickCreateZone() },
                                 hasBackgroundLocation = state.hasBackgroundLocation,
                                 isIgnoringBatteryOptimizations =
                                         state.isIgnoringBatteryOptimizations,

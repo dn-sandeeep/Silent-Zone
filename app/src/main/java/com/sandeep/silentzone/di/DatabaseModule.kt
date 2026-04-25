@@ -29,4 +29,10 @@ object DatabaseModule {
     fun provideSilentZoneDao(database: AppDatabase): SilentZoneDao {
         return database.silentZoneDao()
     }
+
+    @Provides
+    @Singleton
+    fun provideAnalyticsHelper(@ApplicationContext context: Context): com.sandeep.silentzone.utils.AnalyticsHelper {
+        return com.sandeep.silentzone.utils.AnalyticsHelper(context)
+    }
 }
