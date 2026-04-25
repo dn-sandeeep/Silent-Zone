@@ -34,7 +34,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Battery6Bar
+import androidx.compose.material.icons.filled.Battery5Bar
 import androidx.compose.material.icons.filled.DoNotDisturbOn
 import androidx.compose.material.icons.filled.GppGood
 import androidx.compose.material.icons.filled.GppMaybe
@@ -475,7 +475,7 @@ fun DashboardScreen(
                 }
                 Box(modifier = Modifier.weight(1f)) {
                     StatBubble(
-                        label = "Whitelist",
+                        label = "Contacts",
                         value = contactCount.toString(),
                         icon = Icons.Default.Contacts,
                         color = MaterialTheme.colorScheme.secondary,
@@ -486,7 +486,7 @@ fun DashboardScreen(
                     StatBubble(
                         label = "Battery",
                         value = "${"%.3f".format(batteryUsage.totalImpact)}%",
-                        icon = Icons.Default.Battery6Bar,
+                        icon = Icons.Default.Battery5Bar,
                         color = MaterialTheme.colorScheme.tertiary,
                         onClick = onShowBatteryDetails
                     )
