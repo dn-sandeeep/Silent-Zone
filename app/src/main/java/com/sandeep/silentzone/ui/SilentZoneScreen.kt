@@ -127,6 +127,8 @@ fun SilentScreen(
     onDisableBatteryOptimization: () -> Unit,
     onNavigateToZones: () -> Unit = {},
     onLogClickCreateZone: () -> Unit = {},
+    onCompleteUpdate: () -> Unit = {},
+    updateReadyToInstall: Boolean = false,
     hasBackgroundLocation: Boolean,
     isIgnoringBatteryOptimizations: Boolean,
     zoneCount: Int = 0,
@@ -154,6 +156,21 @@ fun SilentScreen(
     var showRadiusDialog by remember { mutableStateOf(false) }
     var radiusSource by remember { mutableStateOf<RadiusSource?>(null) }
     var showBatteryDetails by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
+
+    LaunchedEffect(updateReadyToInstall) {
+        if (updateReadyToInstall) {
+            val result = snackbarHostState.showSnackbar(
+                message = "An update has just been downloaded.",
+                actionLabel = "RESTART",
+                duration = androidx.compose.material3.SnackbarDuration.Indefinite
+            )
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
+                onCompleteUpdate()
+            }
+        }
+    }
 
     if (showMapSelection) {
         val startLocation = initialUserLocation ?: LatLng(20.5937, 78.9629)
@@ -285,7 +302,8 @@ fun SilentScreen(
                         Icon(Icons.Default.Add, contentDescription = "Add")
                     }
                 }
-            }
+            },
+            snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) }
         ) { innerPadding ->
             Box(
                 modifier = Modifier

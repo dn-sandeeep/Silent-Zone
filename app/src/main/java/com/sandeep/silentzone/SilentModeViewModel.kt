@@ -246,4 +246,11 @@ class SilentModeViewModel @Inject constructor(
 
     val dailyPeacefulTime: StateFlow<Long> = repo.getDailyAnalyticsFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0L)
+
+    private val _updateReadyToInstall = MutableStateFlow(false)
+    val updateReadyToInstall: StateFlow<Boolean> = _updateReadyToInstall.asStateFlow()
+
+    fun setUpdateReadyToInstall(ready: Boolean) {
+        _updateReadyToInstall.value = ready
+    }
 }

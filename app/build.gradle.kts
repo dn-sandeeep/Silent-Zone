@@ -19,8 +19,8 @@ android {
         applicationId = "com.sandeep.silentzone"
         minSdk = 24
         targetSdk = 36
-        versionCode = 15
-        versionName = "0.1.2"
+        versionCode = 9
+        versionName = "0.0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         

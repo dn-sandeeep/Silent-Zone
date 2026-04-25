@@ -18,6 +18,8 @@ class AppUpdateHelper(private val activity: Activity) {
 
     private val appUpdateManager: AppUpdateManager = AppUpdateManagerFactory.create(activity)
     private val remoteConfig: FirebaseRemoteConfig = FirebaseRemoteConfig.getInstance()
+    
+    var onUpdateDownloaded: (() -> Unit)? = null
 
     var isImmediateUpdateInProgress = false
         private set
@@ -126,32 +128,11 @@ class AppUpdateHelper(private val activity: Activity) {
     }
 
     private fun showUpdateSnackbar() {
-        try {
-            if (activity.isFinishing || activity.isDestroyed) {
-                Log.w("AppUpdateHelper", "Activity is not in a valid state to show Snackbar")
-                return
-            }
+        onUpdateDownloaded?.invoke()
+    }
 
-            val rootView = activity.findViewById<android.view.View>(android.R.id.content)
-            if (rootView != null) {
-                Snackbar.make(
-                    rootView,
-                    "An update has just been downloaded.",
-                    Snackbar.LENGTH_INDEFINITE
-                ).apply {
-                    setAction("RESTART") { 
-                        Log.d("AppUpdateHelper", "Complete update clicked")
-                        appUpdateManager.completeUpdate() 
-                    }
-                    show()
-                }
-            } else {
-                Log.e("AppUpdateHelper", "Root view not found for Snackbar")
-            }
-        } catch (e: Exception) {
-            Log.e("AppUpdateHelper", "Failed to show Snackbar, falling back to Toast", e)
-            android.widget.Toast.makeText(activity, "Update downloaded. Please restart the app.", android.widget.Toast.LENGTH_LONG).show()
-        }
+    fun completeUpdate() {
+        appUpdateManager.completeUpdate()
     }
 
     fun unregisterListener() {

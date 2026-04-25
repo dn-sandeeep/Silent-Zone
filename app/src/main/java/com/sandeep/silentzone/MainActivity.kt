@@ -61,6 +61,9 @@ class MainActivity : ComponentActivity() {
         permissionManager.requestInitialPermissions()
 
         appUpdateHelper = AppUpdateHelper(this)
+        appUpdateHelper.onUpdateDownloaded = {
+            vm.setUpdateReadyToInstall(true)
+        }
         appUpdateHelper.checkForUpdates()
 
         enableEdgeToEdge()
@@ -155,6 +158,8 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onNavigateToZones = { vm.logNavigateToZones() },
                                 onLogClickCreateZone = { vm.logClickCreateZone() },
+                                onCompleteUpdate = { appUpdateHelper.completeUpdate() },
+                                updateReadyToInstall = vm.updateReadyToInstall.collectAsStateWithLifecycle().value,
                                 hasBackgroundLocation = state.hasBackgroundLocation,
                                 isIgnoringBatteryOptimizations =
                                         state.isIgnoringBatteryOptimizations,
