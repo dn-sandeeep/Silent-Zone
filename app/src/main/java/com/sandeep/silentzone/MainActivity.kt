@@ -176,6 +176,10 @@ class MainActivity : ComponentActivity() {
         if (requestCode == AppUpdateHelper.UPDATE_REQUEST_CODE) {
             if (resultCode != RESULT_OK) {
                 Log.e("MainActivity", "Update flow failed! Result code: $resultCode")
+                if (appUpdateHelper.isImmediateUpdateInProgress) {
+                    Log.d("MainActivity", "Immediate update cancelled. Closing app.")
+                    finish()
+                }
             }
         }
     }

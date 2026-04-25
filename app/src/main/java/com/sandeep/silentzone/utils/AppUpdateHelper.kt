@@ -10,10 +10,26 @@ import com.google.android.play.core.install.InstallStateUpdatedListener
 import com.google.android.play.core.install.model.AppUpdateType
 import com.google.android.play.core.install.model.InstallStatus
 import com.google.android.play.core.install.model.UpdateAvailability
+import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings
+import com.google.firebase.remoteconfig.ktx.remoteConfigSettings
 
 class AppUpdateHelper(private val activity: Activity) {
 
     private val appUpdateManager: AppUpdateManager = AppUpdateManagerFactory.create(activity)
+    private val remoteConfig: FirebaseRemoteConfig = FirebaseRemoteConfig.getInstance()
+
+    var isImmediateUpdateInProgress = false
+        private set
+
+    init {
+        val configSettings = remoteConfigSettings {
+            minimumFetchIntervalInSeconds = 3600 // Fetch every hour
+        }
+        remoteConfig.setConfigSettingsAsync(configSettings)
+        remoteConfig.setDefaultsAsync(mapOf("force_update_version" to 0L))
+    }
+
     private val updateListener = InstallStateUpdatedListener { state ->
         if (state.installStatus() == InstallStatus.DOWNLOADED) {
             showUpdateSnackbar()
@@ -21,31 +37,36 @@ class AppUpdateHelper(private val activity: Activity) {
     }
 
     fun checkForUpdates() {
+        remoteConfig.fetchAndActivate().addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.d("AppUpdateHelper", "Remote Config fetch successful")
+            } else {
+                Log.e("AppUpdateHelper", "Remote Config fetch failed")
+            }
+            performUpdateCheck()
+        }
+    }
+
+    private fun performUpdateCheck() {
         val appUpdateInfoTask = appUpdateManager.appUpdateInfo
 
         appUpdateInfoTask.addOnSuccessListener { appUpdateInfo ->
             val availability = appUpdateInfo.updateAvailability()
-            val priority = appUpdateInfo.updatePriority()
+            val forceUpdateVersion = remoteConfig.getLong("force_update_version")
+            val currentVersion = com.sandeep.silentzone.BuildConfig.VERSION_CODE
             
             Log.d("AppUpdateHelper", "Checking for updates...")
             Log.d("AppUpdateHelper", "Update Availability: $availability")
-            Log.d("AppUpdateHelper", "Update Priority: $priority")
-            Log.d("AppUpdateHelper", "Flexible Allowed: ${appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)}")
-            Log.d("AppUpdateHelper", "Immediate Allowed: ${appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)}")
+            Log.d("AppUpdateHelper", "Force Update Version (Remote): $forceUpdateVersion")
+            Log.d("AppUpdateHelper", "Current Version: $currentVersion")
 
             if (availability == UpdateAvailability.UPDATE_AVAILABLE) {
-                val currentVersion = com.sandeep.silentzone.BuildConfig.VERSION_CODE
-                val newVersion = appUpdateInfo.availableVersionCode()
-                val versionDiff = newVersion - currentVersion
-
-                Log.d("AppUpdateHelper", "Current Version: $currentVersion, New Version: $newVersion, Diff: $versionDiff")
-
-                // Agar version gap 2 ya usse zyada hai, toh IMMEDIATE update trigger karo
-                if ((versionDiff >= 2 || priority >= 4) && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)) {
-                    Log.d("AppUpdateHelper", "Triggering IMMEDIATE update (Reason: Critical Gap or High Priority)")
+                // Decision Logic
+                if (currentVersion < forceUpdateVersion && appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.IMMEDIATE)) {
+                    Log.d("AppUpdateHelper", "Triggering IMMEDIATE update (Reason: Current version $currentVersion < Forced version $forceUpdateVersion)")
                     startUpdate(appUpdateInfo, AppUpdateType.IMMEDIATE)
                 } else if (appUpdateInfo.isUpdateTypeAllowed(AppUpdateType.FLEXIBLE)) {
-                    Log.d("AppUpdateHelper", "Triggering FLEXIBLE update (Reason: Minor Gap)")
+                    Log.d("AppUpdateHelper", "Triggering FLEXIBLE update")
                     appUpdateManager.registerListener(updateListener)
                     startUpdate(appUpdateInfo, AppUpdateType.FLEXIBLE)
                 }
@@ -53,12 +74,15 @@ class AppUpdateHelper(private val activity: Activity) {
                 Log.d("AppUpdateHelper", "No update available (Availability: $availability)")
             }
         }.addOnFailureListener { e ->
-            Log.e("AppUpdateHelper", "Failed to check for updates: ${e.message}", e)
+            Log.e("AppUpdateHelper", "Failed to get appUpdateInfo: ${e.message}", e)
         }
     }
 
     private fun startUpdate(appUpdateInfo: com.google.android.play.core.appupdate.AppUpdateInfo, updateType: Int) {
         try {
+            if (updateType == AppUpdateType.IMMEDIATE) {
+                isImmediateUpdateInProgress = true
+            }
             appUpdateManager.startUpdateFlowForResult(
                 appUpdateInfo,
                 activity,

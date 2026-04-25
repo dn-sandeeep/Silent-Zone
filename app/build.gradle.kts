@@ -93,8 +93,9 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.analytics)
     implementation(libs.firebase.crashlytics)
+    implementation("com.google.firebase:firebase-config-ktx")
 
-    // Hilt
+    // Room
     implementation(libs.hilt.android)
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.material3)
