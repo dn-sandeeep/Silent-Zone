@@ -38,6 +38,12 @@ interface SilentZoneDao {
     @Query("DELETE FROM wifi_zones WHERE ssid = :ssid")
     suspend fun deleteWifiZoneBySsid(ssid: String)
 
+    @Query("SELECT COUNT(*) FROM location_zones")
+    suspend fun getLocationZonesCount(): Int
+
+    @Query("SELECT COUNT(*) FROM wifi_zones")
+    suspend fun getWifiZonesCount(): Int
+
     // Analytics
     @Insert
     suspend fun insertAnalyticsEvent(event: AnalyticsEventEntity): Long

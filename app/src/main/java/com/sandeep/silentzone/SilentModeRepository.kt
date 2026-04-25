@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
+import android.os.BatteryManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
@@ -63,7 +64,8 @@ class SilentModeRepository
 constructor(
         @ApplicationContext private val appContext: Context,
         private val dao: SilentZoneDao,
-        private val geofenceManager: SilentZoneGeofenceManager
+        private val geofenceManager: SilentZoneGeofenceManager,
+        private val analytics: com.sandeep.silentzone.utils.AnalyticsHelper
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val audio: AudioManager =
@@ -247,6 +249,7 @@ constructor(
     }
 
     private fun applyMode(mode: RingerMode) {
+        val previousMode = getCurrentMode()
         var targetMode = mode
         if (!hasPolicyAccess() && mode == RingerMode.SILENT) {
             targetMode = RingerMode.VIBRATE
@@ -261,6 +264,11 @@ constructor(
                 RingerMode.NORMAL -> audio.ringerMode = AudioManager.RINGER_MODE_NORMAL
             }
             refreshMode()
+            
+            val newMode = getCurrentMode()
+            if (previousMode != newMode) {
+                analytics.logModeTransition(previousMode.name, newMode.name)
+            }
         } catch (e: Exception) {
             android.util.Log.e("SilentModeRepo", "Failed to apply mode $targetMode: ${e.message}")
         }
@@ -651,6 +659,18 @@ constructor(
             
             com.google.firebase.analytics.FirebaseAnalytics.getInstance(appContext)
                 .logEvent("background_service_usage_heartbeat", bundle)
+
+            // Log estimated battery impact and total zones
+            val batteryUsage = getBatteryUsageFlow().first()
+            analytics.logEstimatedBatteryImpact(
+                batteryUsage.totalImpact,
+                batteryUsage.wifiImpact,
+                batteryUsage.locationImpact
+            )
+
+            val wifiCount = dao.getWifiZonesCount()
+            val locationCount = dao.getLocationZonesCount()
+            analytics.logTotalZones(wifiCount, locationCount)
 
             // Update baseline (keeping it minute-aligned to avoid rounding drift)
             prefs.edit().putLong(PREF_KEY_TOTAL_REPORTED_MILLIS, lastReported + (deltaMinutes * 60000)).apply()
