@@ -153,6 +153,11 @@ class MainActivity : ComponentActivity() {
                                 onRequestPermission = { action ->
                                     permissionManager.requestLocationPermissions { action() }
                                 },
+                                onRequestBackgroundLocation = {
+                                    permissionManager.requestLocationPermissions {
+                                        permissionManager.checkAndRequestBackgroundLocation()
+                                    }
+                                },
                                 onDisableBatteryOptimization = {
                                     permissionManager.requestDisableBatteryOptimization()
                                 },
