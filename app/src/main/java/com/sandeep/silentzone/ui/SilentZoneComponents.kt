@@ -427,7 +427,7 @@ fun PulseStatusHeader(mode: RingerMode, isFallback: Boolean = false) {
             Text(
                 text = when (mode) {
                     RingerMode.SILENT -> "ALL SOUNDS MUTED"
-                    RingerMode.VIBRATE -> "HAPTIC FEEDBACK ONLY"
+                    RingerMode.VIBRATE -> "CALLS WILL VIBRATE"
                     RingerMode.NORMAL -> "ALL SOUNDS ENABLED"
                 },
                 style = MaterialTheme.typography.labelMedium.copy(
@@ -1154,6 +1154,13 @@ fun AddZoneTypeBottomSheet(
             
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 AddTypeMenuItem(
+                    title = "Connect to WiFi",
+                    subtitle = "Silence when SSID matches",
+                    icon = Icons.Default.Wifi,
+                    color = MaterialTheme.colorScheme.tertiary,
+                    onClick = { onRequestPermission { onWifi() } }
+                )
+                AddTypeMenuItem(
                     title = "Current Location",
                     subtitle = "Create a geofence around here",
                     icon = Icons.Default.MyLocation,
@@ -1166,13 +1173,6 @@ fun AddZoneTypeBottomSheet(
                     icon = Icons.Default.Map,
                     color = MaterialTheme.colorScheme.secondary,
                     onClick = { onRequestPermission { onSelectMap() } }
-                )
-                AddTypeMenuItem(
-                    title = "Connect to WiFi",
-                    subtitle = "Silence when SSID matches",
-                    icon = Icons.Default.Wifi,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    onClick = { onRequestPermission { onWifi() } }
                 )
             }
         }

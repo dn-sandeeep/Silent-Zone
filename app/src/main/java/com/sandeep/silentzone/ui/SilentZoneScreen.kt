@@ -494,6 +494,15 @@ fun DashboardScreen(
                 }
             }
 
+            if (zoneCount == 0) {
+                // --- NEW USER ONBOARDING ---
+                OnboardingCard(onNavigateToZones = onNavigateToZones)
+            } else {
+                // --- ADVANCED DASHBOARD (Existing Users) ---
+                AnalyticsSummaryCard(dailyTotalMillis = dailyPeacefulTime)
+
+            }
+
             // --- COMMON SETUP CHECKLIST ---
             if (!accessGranted || !hasBackgroundLocation || !isIgnoringBatteryOptimizations) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -535,15 +544,8 @@ fun DashboardScreen(
                 }
             }
 
-            if (zoneCount == 0) {
-                // --- NEW USER ONBOARDING ---
-                OnboardingCard(onNavigateToZones = onNavigateToZones)
-            } else {
-                // --- ADVANCED DASHBOARD (Existing Users) ---
-                AnalyticsSummaryCard(dailyTotalMillis = dailyPeacefulTime)
-                
-                RecentActivityList(events = recentAnalytics)
-            }
+
+            RecentActivityList(events = recentAnalytics)
 
             // --- COMMON CONTROLS (Moved to bottom) ---
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
