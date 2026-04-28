@@ -504,42 +504,37 @@ fun DashboardScreen(
             }
 
             // --- COMMON SETUP CHECKLIST ---
-            if (!accessGranted || !hasBackgroundLocation || !isIgnoringBatteryOptimizations) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    DashboardSectionHeader("Setup Checklist")
-                    GlassCard {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            if (!accessGranted) {
-                                SetupStepItem(
-                                    title = "Do Not Disturb Access",
-                                    subtitle = "Required to mute sounds",
-                                    onClick = onGrantAccess,
-                                    color = MaterialTheme.colorScheme.error,
-                                    rationale = "To enable complete silence, Do Not Disturb access is essential. Without this permission, SilentZone can only switch your device to Vibrate mode, but cannot fully silent your phone."
-                                )
-                            }
-                            if (!hasBackgroundLocation) {
-                                SetupStepItem(
-                                    title = "Background Location",
-                                    subtitle = "Required to detect zones",
-                                    onClick = onRequestBackgroundLocation,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    rationale = "Continuous location access is required to detect geofences reliably in the background. Without 'Allow all the time' permission, automated location-based silencing will fail when the app is minimized."
-                                )
-                            }
-                            if (!isIgnoringBatteryOptimizations) {
-                                SetupStepItem(
-                                    title = "Battery Optimization",
-                                    subtitle = "Disable for 100% reliability",
-                                    onClick = onDisableBatteryOptimization,
-                                    color = MaterialTheme.colorScheme.tertiary,
-                                    rationale = "Android's power management may terminate background services to save battery. Disabling battery optimization for SilentZone guarantees uninterrupted automation and reliable zone detection."
-                                )
-                            }
-                        }
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                DashboardSectionHeader("Setup Checklist")
+                GlassCard {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        SetupStepItem(
+                            title = "Do Not Disturb Access",
+                            subtitle = "Required to mute sounds",
+                            onClick = onGrantAccess,
+                            color = MaterialTheme.colorScheme.error,
+                            rationale = "To enable complete silence, Do Not Disturb access is essential. Without this permission, SilentZone can only switch your device to Vibrate mode, but cannot fully silent your phone.",
+                            isGranted = accessGranted
+                        )
+                        SetupStepItem(
+                            title = "Background Location",
+                            subtitle = "Required to detect zones",
+                            onClick = onRequestBackgroundLocation,
+                            color = MaterialTheme.colorScheme.primary,
+                            rationale = "Continuous location access is required to detect geofences reliably in the background. Without 'Allow all the time' permission, automated location-based silencing will fail when the app is minimized.",
+                            isGranted = hasBackgroundLocation
+                        )
+                        SetupStepItem(
+                            title = "Battery Optimization",
+                            subtitle = "Disable for 100% reliability",
+                            onClick = onDisableBatteryOptimization,
+                            color = MaterialTheme.colorScheme.tertiary,
+                            rationale = "Android's power management may terminate background services to save battery. Disabling battery optimization for SilentZone guarantees uninterrupted automation and reliable zone detection.",
+                            isGranted = isIgnoringBatteryOptimizations
+                        )
                     }
                 }
             }

@@ -1552,16 +1552,18 @@ fun SetupStepItem(
     subtitle: String,
     onClick: () -> Unit,
     color: Color = MaterialTheme.colorScheme.primary,
-    rationale: String = ""
+    rationale: String = "",
+    isGranted: Boolean = false
 ) {
     var showRationale by remember { mutableStateOf(false) }
+    val effectiveColor = if (isGranted) Color(0xFF4CAF50) else color
 
     if (showRationale && rationale.isNotEmpty()) {
         AlertDialog(
             onDismissRequest = { showRationale = false },
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.Info, null, tint = color)
+                    Icon(Icons.Default.Info, null, tint = effectiveColor)
                     Text("Why is this needed?", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             },
@@ -1574,7 +1576,7 @@ fun SetupStepItem(
             },
             confirmButton = {
                 androidx.compose.material3.TextButton(onClick = { showRationale = false }) {
-                    Text("GOT IT", fontWeight = FontWeight.Black, color = color)
+                    Text("GOT IT", fontWeight = FontWeight.Black, color = effectiveColor)
                 }
             },
             shape = RoundedCornerShape(28.dp),
@@ -1587,8 +1589,8 @@ fun SetupStepItem(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
-            .background(color.copy(alpha = 0.05f))
-            .clickable { onClick() }
+            .background(effectiveColor.copy(alpha = if (isGranted) 0.08f else 0.05f))
+            .then(if (!isGranted) Modifier.clickable { onClick() } else Modifier)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -1596,13 +1598,13 @@ fun SetupStepItem(
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .background(color.copy(alpha = 0.1f), CircleShape),
+                .background(effectiveColor.copy(alpha = 0.1f), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.PriorityHigh,
+                if (isGranted) Icons.Default.CheckCircle else Icons.Default.PriorityHigh,
                 contentDescription = null,
-                tint = color,
+                tint = effectiveColor,
                 modifier = Modifier.size(20.dp)
             )
         }
@@ -1620,25 +1622,34 @@ fun SetupStepItem(
             )
         }
         
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (rationale.isNotEmpty()) {
-                IconButton(
-                    onClick = { showRationale = true },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        Icons.Default.Info,
-                        null,
-                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
-                        modifier = Modifier.size(18.dp)
-                    )
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (isGranted) {
+                Text(
+                    "Granted",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = effectiveColor
+                )
+            } else {
+                if (rationale.isNotEmpty()) {
+                    IconButton(
+                        onClick = { showRationale = true },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            null,
+                            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
                 }
+                Icon(
+                    Icons.Default.ChevronRight,
+                    null,
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                )
             }
-            Icon(
-                Icons.Default.ChevronRight,
-                null,
-                tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-            )
         }
     }
 }
