@@ -73,10 +73,27 @@ class PermissionManager(private val activity: ComponentActivity) {
 
         if (permissionsToRequest.isNotEmpty()) {
             onPermissionGrantedAction = action
-            requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+            showProminentLocationDisclosure {
+                requestPermissionLauncher.launch(permissionsToRequest.toTypedArray())
+            }
         } else {
             action()
         }
+    }
+
+    private fun showProminentLocationDisclosure(onAccept: () -> Unit) {
+        AlertDialog.Builder(activity)
+            .setTitle("Location Data Collection")
+            .setMessage("We collect location data to enable this feature even when the app is closed or not in use. Your privacy is our priority; this data is only used for automation and is never shared.")
+            .setPositiveButton("Accept") { _, _ ->
+                onAccept()
+            }
+            .setNegativeButton("Cancel") { dialog, _ ->
+                dialog.dismiss()
+                onPermissionGrantedAction = null
+            }
+            .setCancelable(false)
+            .show()
     }
 
     fun requestContactPermissions(action: () -> Unit) {
