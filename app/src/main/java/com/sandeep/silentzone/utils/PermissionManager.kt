@@ -83,9 +83,9 @@ class PermissionManager(private val activity: ComponentActivity) {
 
     private fun showProminentLocationDisclosure(onAccept: () -> Unit) {
         AlertDialog.Builder(activity)
-            .setTitle("Location Data Collection")
-            .setMessage("We collect location data to enable this feature even when the app is closed or not in use. Your privacy is our priority; this data is only used for automation and is never shared.")
-            .setPositiveButton("Accept") { _, _ ->
+            .setTitle("Prominent Disclosure")
+            .setMessage("Silent Zone collects location data to enable automatic ringer mode switching (Silent/Vibrate) based on your location, even when the app is closed or not in use.")
+            .setPositiveButton("I Agree") { _, _ ->
                 onAccept()
             }
             .setNegativeButton("Cancel") { dialog, _ ->
@@ -117,23 +117,25 @@ class PermissionManager(private val activity: ComponentActivity) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val hasBackground = ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
             if (!hasBackground) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    showBackgroundLocationRationale()
-                } else {
-                     backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-                }
+                showBackgroundLocationRationale(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R)
             }
         }
     }
 
-    private fun showBackgroundLocationRationale() {
+    private fun showBackgroundLocationRationale(requiresSettingsNavigation: Boolean) {
+        val extraInstruction = if (requiresSettingsNavigation) {
+            "\n\nTo enable this, please select 'Allow all the time' in the system settings."
+        } else {
+            ""
+        }
         AlertDialog.Builder(activity)
             .setTitle("Background Location Required")
-            .setMessage("To detect Location zones even when the app is closed, please select 'Allow all the time' in the system settings.\n\nGo to Settings -> Permissions -> Location -> Select 'Allow all the time'.")
-            .setPositiveButton("OK") { _, _ ->
+            .setMessage("Silent Zone collects location data to enable automatic ringer mode switching (Silent/Vibrate) based on your location, even when the app is closed or not in use." + extraInstruction)
+            .setPositiveButton("I Agree") { _, _ ->
                  try { backgroundLocationLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION) } catch (e: Exception) {}
             }
-            .setNegativeButton("No Thanks") { dialog, _ -> dialog.dismiss() }
+            .setNegativeButton("Cancel") { dialog, _ -> dialog.dismiss() }
+            .setCancelable(false)
             .show()
     }
 
