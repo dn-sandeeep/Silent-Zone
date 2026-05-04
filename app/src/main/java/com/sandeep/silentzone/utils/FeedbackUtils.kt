@@ -46,10 +46,9 @@ object FeedbackUtils {
 
     fun shareApp(context: Context) {
         val shareText = """
-            🔇 Stop worrying about your phone's ringer mode! 
+            Smart Sound Management with SilentZone 📱
             
-            I'm using SilentZone to automatically switch between Silent, Vibrate, and Normal modes based on my location and Wi-Fi. 
-            
+            No more manual toggling between Silent, Vibrate, and Normal modes. SilentZone automates your device's profile using intelligent location and network triggers.
             Download it here: https://play.google.com/store/apps/details?id=${context.packageName}
         """.trimIndent()
 
