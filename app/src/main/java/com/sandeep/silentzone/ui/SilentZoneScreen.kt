@@ -583,7 +583,7 @@ fun DashboardScreen(
 
             // --- COMMON SETUP CHECKLIST ---
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                DashboardSectionHeader("Setup Checklist")
+                DashboardSectionHeader("Setup Permissions")
                 GlassCard {
                     Column(
                         modifier = Modifier.padding(10.dp),
@@ -721,9 +721,9 @@ fun ZonesScreen(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+        item { Spacer(modifier = Modifier.height(6.dp)) }
 
         // Section 1: Geofence Areas
         item { DashboardSectionHeader("Geofence Areas") }
@@ -749,7 +749,7 @@ fun ZonesScreen(
                 MiniEmptyState(
                     icon = Icons.Default.Wifi,
                     title = "No Wi-Fi Zones",
-                    subtitle = "Add a network to silence your phone automatically.",
+                    subtitle = "Tap the + button to create your first Wi-Fi.",
                     color = MaterialTheme.colorScheme.secondary
                 )
             }
