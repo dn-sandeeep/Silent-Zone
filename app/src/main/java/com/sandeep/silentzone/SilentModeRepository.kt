@@ -751,8 +751,30 @@ constructor(
         }.timeInMillis
 
         return dao.getEventsSince(startOfDay).map { events ->
-            events.sumOf {
-                it.durationMillis + (if (it.exitTime == null) System.currentTimeMillis() - it.entryTime else 0)
+            events.sumOf { event ->
+                if (event.exitTime != null) {
+                    event.durationMillis
+                } else {
+                    System.currentTimeMillis() - event.entryTime
+                }
+            }
+        }
+    }
+
+    fun getActiveSessionFlow(): Flow<AnalyticsEvent?> {
+        return dao.getRecentEvents().map { events ->
+            events.find { it.exitTime == null }?.toDomain()
+        }
+    }
+
+    fun getLifetimePeacefulTimeFlow(): Flow<Long> {
+        return dao.getEventsSince(0).map { events ->
+            events.sumOf { event ->
+                if (event.exitTime != null) {
+                    event.durationMillis
+                } else {
+                    System.currentTimeMillis() - event.entryTime
+                }
             }
         }
     }

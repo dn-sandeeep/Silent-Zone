@@ -68,6 +68,7 @@ dependencies {
     
     // Compose
     implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.runtime)
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
@@ -79,6 +80,7 @@ dependencies {
     // Lifecycle & ViewModel
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.firebase.perf)
 
     // Google Play Services
     implementation(libs.play.services.location)

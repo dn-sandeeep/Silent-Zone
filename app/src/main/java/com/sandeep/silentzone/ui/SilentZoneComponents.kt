@@ -3,6 +3,7 @@ package com.sandeep.silentzone.ui
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -40,13 +41,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.DoNotDisturbOn
-import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
@@ -96,11 +90,23 @@ import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.DoNotDisturbOn
+import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.LaunchedEffect
+import com.google.firebase.perf.util.Timer
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
 import com.sandeep.silentzone.AnalyticsEvent
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -132,11 +138,35 @@ fun GlassCard(
 @Composable
 fun AnalyticsSummaryCard(
     dailyTotalMillis: Long,
+    lifetimeTotalMillis: Long,
+    activeSession: AnalyticsEvent?,
     modifier: Modifier = Modifier
 ) {
-    val totalSeconds = dailyTotalMillis / 1000
-    val hours = totalSeconds / 3600
-    val minutes = (totalSeconds % 3600) / 60
+    // Live Ticker logic: Add the elapsed time since the last database update to the totals
+    var liveAddition by remember { mutableStateOf(0L) }
+    
+    LaunchedEffect(activeSession) {
+        if (activeSession != null) {
+            val initialSnapshotTime = System.currentTimeMillis()
+            while (true) {
+                liveAddition = System.currentTimeMillis() - initialSnapshotTime
+                delay(1000)
+            }
+        } else {
+            liveAddition = 0L
+        }
+    }
+
+    val displayedDailyMillis = dailyTotalMillis + liveAddition
+    val displayedLifetimeMillis = lifetimeTotalMillis + liveAddition
+    
+    val dailySeconds = displayedDailyMillis / 1000
+    val dailyHours = dailySeconds / 3600
+    val dailyMinutes = (dailySeconds % 3600) / 60
+    
+    val lifetimeSeconds = displayedLifetimeMillis / 1000
+    val lifetimeHours = lifetimeSeconds / 3600
+    val lifetimeMinutes = (lifetimeSeconds % 3600) / 60
     
     GlassCard(modifier = modifier) {
         Row(
@@ -145,30 +175,70 @@ fun AnalyticsSummaryCard(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Peaceful Time Today",
+                    if (activeSession != null) "Active Session" else "Peaceful Time Today",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = if (activeSession != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
                 )
-                Text(
-                    "Time spent in silent zones",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                )
+                
+                if (activeSession != null) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Wifi, 
+                            null, 
+                            tint = MaterialTheme.colorScheme.primary, 
+                            modifier = Modifier.size(12.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            activeSession.zoneName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                } else {
+                    Text(
+                        "Daily focus and silence overview",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
+                
                 Spacer(modifier = Modifier.height(12.dp))
+                
+                // Daily Total
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
-                        text = if (hours > 0) "${hours}h ${minutes}m" else "${minutes}m",
+                        text = if (dailyHours > 0) "${dailyHours}h ${dailyMinutes}m" else "${dailyMinutes}m",
                         style = MaterialTheme.typography.headlineLarge,
                         fontWeight = FontWeight.Black,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "total",
+                        "today",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
                         modifier = Modifier.padding(bottom = 6.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // Lifetime Total
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.History, 
+                        null, 
+                        tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f), 
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "Lifetime: ${lifetimeHours}h ${lifetimeMinutes}m",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
                 }
             }
@@ -176,28 +246,57 @@ fun AnalyticsSummaryCard(
             // Visual Indicator (Circular Progress-like)
             Box(
                 contentAlignment = Alignment.Center,
-                modifier = Modifier.size(80.dp)
+                modifier = Modifier.size(90.dp)
             ) {
-                val progress = (dailyTotalMillis.toFloat() / (8 * 3600 * 1000f)).coerceAtMost(1f) // Goal: 8 hours
-                Canvas(modifier = Modifier.fillMaxSize()) {
+                val progress = (displayedDailyMillis.toFloat() / (8 * 3600 * 1000f)).coerceAtMost(1f) // Goal: 8 hours
+                
+                // Pulsing animation if active
+                val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                val pulseScale by if (activeSession != null) {
+                    infiniteTransition.animateFloat(
+                        initialValue = 1f,
+                        targetValue = 1.1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(1000, easing = LinearOutSlowInEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "pulseScale"
+                    )
+                } else {
+                    remember { mutableStateOf(1f) }
+                }
+
+                Canvas(modifier = Modifier.fillMaxSize().scale(pulseScale)) {
                     drawCircle(
                         color = Color.Gray.copy(alpha = 0.1f),
                         style = Stroke(width = 8.dp.toPx())
                     )
                     drawArc(
-                        color = Color(0xFF6200EE),
+                        color = if (activeSession != null) Color(0xFF6200EE) else Color(0xFF6200EE).copy(alpha = 0.5f),
                         startAngle = -90f,
                         sweepAngle = 360f * progress,
                         useCenter = false,
-                        style = Stroke(width = 8.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
+                        style = Stroke(width = 10.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
                     )
                 }
-                Icon(
-                    Icons.Default.NotificationsPaused,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(32.dp)
-                )
+                
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        if (activeSession != null) Icons.Default.Timer else Icons.Default.NotificationsPaused,
+                        contentDescription = null,
+                        tint = if (activeSession != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                        modifier = Modifier.size(32.dp)
+                    )
+                    if (activeSession != null) {
+                        Text(
+                            "LIVE",
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Black,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                }
             }
         }
     }

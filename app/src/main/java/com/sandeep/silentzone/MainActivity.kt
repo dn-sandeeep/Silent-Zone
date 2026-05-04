@@ -84,6 +84,8 @@ class MainActivity : ComponentActivity() {
                                 vm.importantContacts.collectAsStateWithLifecycle().value
                         val recentAnalytics = vm.recentAnalytics.collectAsStateWithLifecycle().value
                         val dailyPeacefulTime = vm.dailyPeacefulTime.collectAsStateWithLifecycle().value
+                        val lifetimePeacefulTime = vm.lifetimePeacefulTime.collectAsStateWithLifecycle().value
+                        val activeSession = vm.activeSession.collectAsStateWithLifecycle().value
                         val currentWifiSsid = getCurrentSsid()
 
                         val silentSsids = wifiZones.filter { it.mode == RingerMode.SILENT }.map { it.ssid }.toSet()
@@ -171,6 +173,8 @@ class MainActivity : ComponentActivity() {
                                 zoneCount = wifiZones.size + locationZones.size,
                                 contactCount = importantContacts.size,
                                 dailyPeacefulTime = dailyPeacefulTime,
+                                lifetimePeacefulTime = lifetimePeacefulTime,
+                                activeSession = activeSession,
                                 recentAnalytics = recentAnalytics,
                                 batteryUsage = state.batteryUsage
                         )

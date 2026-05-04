@@ -129,6 +129,8 @@ fun SilentScreen(
     zoneCount: Int = 0,
     contactCount: Int = 0,
     dailyPeacefulTime: Long = 0,
+    lifetimePeacefulTime: Long = 0,
+    activeSession: com.sandeep.silentzone.AnalyticsEvent? = null,
     recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent> = emptyList(),
     batteryUsage: com.sandeep.silentzone.BatteryUsage =
         com.sandeep.silentzone.BatteryUsage(0.0, 0.0, 0.0, 0.0)
@@ -382,6 +384,8 @@ fun SilentScreen(
                                 zoneCount = zoneCount,
                                 contactCount = contactCount,
                                 dailyPeacefulTime = dailyPeacefulTime,
+                                lifetimePeacefulTime = lifetimePeacefulTime,
+                                activeSession = activeSession,
                                 recentAnalytics = recentAnalytics,
                                 batteryUsage = batteryUsage,
                                 onNavigateToZones = { selectedScreen = 1 },
@@ -510,6 +514,8 @@ fun DashboardScreen(
     zoneCount: Int,
     contactCount: Int,
     dailyPeacefulTime: Long,
+    lifetimePeacefulTime: Long,
+    activeSession: com.sandeep.silentzone.AnalyticsEvent?,
     recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent>,
     batteryUsage: com.sandeep.silentzone.BatteryUsage,
     onNavigateToZones: () -> Unit,
@@ -566,10 +572,14 @@ fun DashboardScreen(
             if (zoneCount == 0) {
                 // --- NEW USER ONBOARDING ---
                 OnboardingCard(onNavigateToZones = onNavigateToZones)
-            } else {
-                // --- ADVANCED DASHBOARD (Existing Users) ---
-                AnalyticsSummaryCard(dailyTotalMillis = dailyPeacefulTime)
             }
+            
+            // --- ADVANCED DASHBOARD ---
+            AnalyticsSummaryCard(
+                dailyTotalMillis = dailyPeacefulTime,
+                lifetimeTotalMillis = lifetimePeacefulTime,
+                activeSession = activeSession
+            )
 
             // --- COMMON SETUP CHECKLIST ---
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
