@@ -94,6 +94,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.geometry.center
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.TextButton
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
@@ -203,18 +206,34 @@ fun AnalyticsSummaryCard(
 @Composable
 fun RecentActivityList(
     events: List<AnalyticsEvent>,
+    onViewAll: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            "Recent Activity",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(horizontal = 4.dp)
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Recent Activity",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (events.size > 5) {
+                TextButton(onClick = onViewAll) {
+                    Text(
+                        "View All",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
         
         if (events.isEmpty()) {
             Box(
@@ -230,8 +249,45 @@ fun RecentActivityList(
                 )
             }
         } else {
-            events.forEach { event ->
+            events.take(5).forEach { event ->
                 ActivityItem(event)
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ActivityHistoryBottomSheet(
+    events: List<AnalyticsEvent>,
+    onDismiss: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        dragHandle = { BottomSheetDefaults.DragHandle() },
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 32.dp)
+        ) {
+            Text(
+                text = "Activity History",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
+                modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
+            )
+            
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(events) { event ->
+                    ActivityItem(event)
+                }
             }
         }
     }

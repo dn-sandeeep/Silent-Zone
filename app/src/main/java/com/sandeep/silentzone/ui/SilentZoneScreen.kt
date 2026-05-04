@@ -158,6 +158,7 @@ fun SilentScreen(
     var showRadiusDialog by remember { mutableStateOf(false) }
     var radiusSource by remember { mutableStateOf<RadiusSource?>(null) }
     var showBatteryDetails by remember { mutableStateOf(false) }
+    var showActivityHistory by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
@@ -338,7 +339,8 @@ fun SilentScreen(
                             batteryUsage = batteryUsage,
                             onNavigateToZones = { selectedScreen = 1 },
                             onNavigateToWhitelist = { selectedScreen = 2 },
-                            onShowBatteryDetails = { showBatteryDetails = true }
+                            onShowBatteryDetails = { showBatteryDetails = true },
+                            onViewAll = { showActivityHistory = true }
                         )
                         1 -> ZonesScreen(
                             silentSsids = silentSsids,
@@ -422,6 +424,13 @@ fun SilentScreen(
                 onDismiss = { showBatteryDetails = false }
             )
         }
+
+        if (showActivityHistory) {
+            ActivityHistoryBottomSheet(
+                events = recentAnalytics,
+                onDismiss = { showActivityHistory = false }
+            )
+        }
     }
 }
 
@@ -446,7 +455,8 @@ fun DashboardScreen(
     batteryUsage: com.sandeep.silentzone.BatteryUsage,
     onNavigateToZones: () -> Unit,
     onNavigateToWhitelist: () -> Unit,
-    onShowBatteryDetails: () -> Unit
+    onShowBatteryDetails: () -> Unit,
+    onViewAll: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -540,7 +550,7 @@ fun DashboardScreen(
             }
 
 
-            RecentActivityList(events = recentAnalytics)
+            RecentActivityList(events = recentAnalytics, onViewAll = onViewAll)
 
             // --- COMMON CONTROLS (Moved to bottom) ---
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
