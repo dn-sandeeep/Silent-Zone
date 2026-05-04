@@ -42,10 +42,6 @@ class SilentZoneApplication : Application(), Configuration.Provider {
             logLevel = LogLevel.Info,
         )
         Clarity.initialize(applicationContext, config)
-        //Clarity.setCurrentMaskingLevel(MaskingLevel.Relaxed)
-        setupKeepAliveWorker()
-        setupInactivityWorker()
-        updateLastLaunchTimestamp()
     }
 
     private fun setupKeepAliveWorker() {

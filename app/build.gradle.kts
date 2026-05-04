@@ -87,7 +87,8 @@ dependencies {
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.androidx.compose.foundation)
-    implementation(libs.microsoft.clarity)
+    //implementation(libs.microsoft.clarity)
+    implementation("com.microsoft.clarity:clarity-compose:3.8.1")
 
     // Firebase
     implementation(platform(libs.firebase.bom))
