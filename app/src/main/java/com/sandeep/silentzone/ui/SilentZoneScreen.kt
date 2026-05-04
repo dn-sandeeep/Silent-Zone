@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
@@ -583,7 +584,7 @@ fun DashboardScreen(
 
             // --- COMMON SETUP CHECKLIST ---
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                DashboardSectionHeader("Setup Checklist")
+                DashboardSectionHeader("Setup Permissions")
                 GlassCard {
                     Column(
                         modifier = Modifier.padding(10.dp),
@@ -721,9 +722,9 @@ fun ZonesScreen(
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+        item { Spacer(modifier = Modifier.height(6.dp)) }
 
         // Section 1: Geofence Areas
         item { DashboardSectionHeader("Geofence Areas") }
@@ -749,7 +750,7 @@ fun ZonesScreen(
                 MiniEmptyState(
                     icon = Icons.Default.Wifi,
                     title = "No Wi-Fi Zones",
-                    subtitle = "Add a network to silence your phone automatically.",
+                    subtitle = "Tap the + button to create your first Wi-Fi.",
                     color = MaterialTheme.colorScheme.secondary
                 )
             }
@@ -1065,7 +1066,7 @@ fun FeedbackScreen() {
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                Icons.Default.AutoAwesome,
+                Icons.Default.Feedback,
                 contentDescription = null,
                 modifier = Modifier.size(60.dp),
                 tint = MaterialTheme.colorScheme.tertiary
@@ -1080,55 +1081,11 @@ fun FeedbackScreen() {
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                "Your feedback helps us make SilentZone better.",
+                "Your feedback helps us make Silent Zone better.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
         }
-
-        // Star Rating
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            repeat(5) { index ->
-                val starIndex = index + 1
-                IconButton(onClick = { rating = starIndex }) {
-                    Icon(
-                        imageVector =
-                            if (starIndex <= rating) Icons.Default.Star
-                            else Icons.Default.StarOutline,
-                        contentDescription = null,
-                        modifier = Modifier.size(36.dp),
-                        tint =
-                            if (starIndex <= rating) Color(0xFFFFB400)
-                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
-                    )
-                }
-            }
-        }
-
-        // Category Selection
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            DashboardSectionHeader("Category")
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                categories.forEach { (name, icon) ->
-                    val isSelected = selectedCategory == name
-                    Box(modifier = Modifier.weight(1f)) {
-                        CategoryChip(
-                            name = name,
-                            icon = icon,
-                            isSelected = isSelected,
-                            onClick = { selectedCategory = name }
-                        )
-                    }
-                }
-            }
-        }
-
         // Message Input
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             DashboardSectionHeader("Message")
@@ -1184,7 +1141,7 @@ fun FeedbackScreen() {
                 fontWeight = FontWeight.Bold
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Icon(Icons.Default.AutoAwesome, null, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.Send, null, modifier = Modifier.size(20.dp))
         }
 
         Spacer(modifier = Modifier.height(40.dp))

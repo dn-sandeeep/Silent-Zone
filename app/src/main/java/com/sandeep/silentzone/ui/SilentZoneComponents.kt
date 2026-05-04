@@ -236,7 +236,7 @@ fun AnalyticsSummaryCard(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Lifetime: ${lifetimeHours}h ${lifetimeMinutes}m",
+                        text = "Total Time: ${lifetimeHours}h ${lifetimeMinutes}m",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
@@ -665,7 +665,7 @@ fun DashboardSectionHeader(title: String, modifier: Modifier = Modifier) {
         color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.5f),
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 12.dp)
+            .padding(horizontal = 8.dp, vertical = 2.dp)
     )
 }
 
@@ -681,7 +681,7 @@ fun ModeToggleCard(
     
     Card(
         modifier = Modifier
-            .height(110.dp)
+            .height(80.dp)
             .fillMaxWidth() // Flexible width
             .scale(scale)
             .clickable { onClick() }
@@ -1529,9 +1529,9 @@ fun MiniEmptyState(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp),
+                .padding(10.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
                 modifier = Modifier
