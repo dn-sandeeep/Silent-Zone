@@ -533,7 +533,7 @@ fun DashboardScreen(
 
         Column(
             modifier = Modifier.padding(10.dp),
-            verticalArrangement = Arrangement.spacedBy(28.dp)
+            verticalArrangement = Arrangement.spacedBy(15.dp)
         ) {
             // Stats Bubbles (Always visible at the top)
             Row(
@@ -582,12 +582,12 @@ fun DashboardScreen(
             )
 
             // --- COMMON SETUP CHECKLIST ---
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 DashboardSectionHeader("Setup Checklist")
                 GlassCard {
                     Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                        modifier = Modifier.padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         SetupStepItem(
                             title = "Do Not Disturb Access",
@@ -621,7 +621,7 @@ fun DashboardScreen(
             }
 
             // --- COMMON CONTROLS (Moved to bottom) ---
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 DashboardSectionHeader("Manual Override")
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -658,11 +658,11 @@ fun DashboardScreen(
             }
 
             if (currentWifiSsid != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     DashboardSectionHeader("Current Connection")
                     GlassCard {
                         Row(
-                            modifier = Modifier.padding(20.dp),
+                            modifier = Modifier.padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(

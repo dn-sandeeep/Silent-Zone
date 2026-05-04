@@ -366,9 +366,13 @@ constructor(
             if (currentSsid != null) {
                 val zone = zones.find { it.ssid == currentSsid }
                 if (zone != null) {
-                    if (!activeWifiSet.contains(currentSsid)) {
+                    val isNewlyDetected = !activeWifiSet.contains(currentSsid)
+                    val hasActiveSession = dao.getActiveEventByZone(currentSsid) != null
+
+                    if (isNewlyDetected || !hasActiveSession) {
+                        android.util.Log.d("SilentModeRepo", "WiFi Zone detected (New: $isNewlyDetected, ActiveSession: $hasActiveSession). Starting session.")
                         saveOriginalMode()
-                        addToWifiSet(currentSsid)
+                        if (isNewlyDetected) addToWifiSet(currentSsid)
                         applyMode(zone.mode)
                         logEntry(currentSsid, "WIFI", zone.mode)
                         unregisterWifiCallback() // Stop background listener, service takes over
@@ -469,15 +473,18 @@ constructor(
                                 results
                         )
                         val isInside = results[0] <= zone.radius
+                        val isAlreadyInSet = activeLocationSet.contains(zone.id)
+                        val hasActiveSession = dao.getActiveEventByZone(zone.name) != null
 
-                        if (isInside && !activeLocationSet.contains(zone.id)) {
+                        if (isInside && (!isAlreadyInSet || !hasActiveSession)) {
                             android.util.Log.d(
                                     "SilentModeRepo",
-                                    "Sync: Found inside zone ${zone.name}"
+                                    "Sync: Found inside zone ${zone.name} (InSet: $isAlreadyInSet, ActiveSession: $hasActiveSession)"
                             )
                             saveOriginalMode()
-                            addToLocationSet(zone.id)
+                            if (!isAlreadyInSet) addToLocationSet(zone.id)
                             applyMode(zone.mode)
+                            logEntry(zone.name, "LOCATION", zone.mode)
                             try {
                                 startMonitoringService(zone.name)
                             } catch (e: Exception) {}

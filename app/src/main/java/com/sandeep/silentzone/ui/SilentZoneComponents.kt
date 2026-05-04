@@ -170,7 +170,7 @@ fun AnalyticsSummaryCard(
     
     GlassCard(modifier = modifier) {
         Row(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(15.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -310,7 +310,7 @@ fun RecentActivityList(
 ) {
     Column(
         modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
@@ -409,13 +409,13 @@ private fun ActivityItem(event: AnalyticsEvent) {
             .fillMaxWidth()
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
-            .padding(16.dp),
+            .padding(10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
+                .size(40.dp)
                 .background(
                     if (event.exitTime == null) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
                     else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.05f),
