@@ -83,7 +83,16 @@ constructor(
     val fallbackEvents = _fallbackEvents.asSharedFlow()
 
     fun refreshMode() {
-        _currentModeFlow.value = getCurrentMode()
+        val current = getCurrentMode()
+        _currentModeFlow.value = current
+
+        // If the device is in NORMAL mode, it's not a "peaceful" session.
+        // Close any active sessions to prevent calculating time when the mode isn't changed or manually overridden.
+        if (current == RingerMode.NORMAL) {
+            scope.launch {
+                sanitizeAnalytics()
+            }
+        }
     }
 
     private val fusedLocationClient =
@@ -369,7 +378,7 @@ constructor(
                     val isNewlyDetected = !activeWifiSet.contains(currentSsid)
                     val hasActiveSession = dao.getActiveEventByZone(currentSsid) != null
 
-                    if (isNewlyDetected || !hasActiveSession) {
+                    if (isNewlyDetected && !hasActiveSession) {
                         android.util.Log.d("SilentModeRepo", "WiFi Zone detected (New: $isNewlyDetected, ActiveSession: $hasActiveSession). Starting session.")
                         saveOriginalMode()
                         if (isNewlyDetected) addToWifiSet(currentSsid)
@@ -476,7 +485,7 @@ constructor(
                         val isAlreadyInSet = activeLocationSet.contains(zone.id)
                         val hasActiveSession = dao.getActiveEventByZone(zone.name) != null
 
-                        if (isInside && (!isAlreadyInSet || !hasActiveSession)) {
+                        if (isInside && (!isAlreadyInSet && !hasActiveSession)) {
                             android.util.Log.d(
                                     "SilentModeRepo",
                                     "Sync: Found inside zone ${zone.name} (InSet: $isAlreadyInSet, ActiveSession: $hasActiveSession)"
@@ -566,10 +575,12 @@ constructor(
     }
 
     suspend fun removeLocationZone(id: String) {
+        val zone = dao.getLocationZoneById(id)?.toDomain()
         dao.deleteLocationZoneById(id)
         geofenceManager.removeGeofence(id)
         if (getActiveLocationSet().contains(id)) {
             removeFromLocationSet(id)
+            if (zone != null) logExit(zone.name)
             checkAndRestore()
         }
     }
@@ -597,6 +608,7 @@ constructor(
         geofenceManager.removeGeofence("wifi_proxy_$ssid")
         if (getActiveWifiSet().contains(ssid)) {
             removeFromWifiSet(ssid)
+            logExit(ssid)
             checkAndRestore()
         }
     }
