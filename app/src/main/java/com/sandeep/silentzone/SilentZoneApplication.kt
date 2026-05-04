@@ -34,6 +34,7 @@ class SilentZoneApplication : Application(), Configuration.Provider {
         kotlinx.coroutines.MainScope().launch {
             repository.syncCurrentState()
             repository.reportServiceUsage()
+            repository.sanitizeAnalytics()
         }
 
         // Microsoft Clarity Initialization

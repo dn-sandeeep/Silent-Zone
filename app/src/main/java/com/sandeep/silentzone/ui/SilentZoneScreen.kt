@@ -28,41 +28,32 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Adjust
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Battery5Bar
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.DoNotDisturbOn
-import androidx.compose.material.icons.filled.GppGood
+import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.GppMaybe
 import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.NotificationsActive
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.SmartButton
-import androidx.compose.material.icons.filled.VerifiedUser
-import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.Wifi
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.Contacts
-import androidx.compose.material.icons.filled.Feedback
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.QuestionAnswer
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,8 +66,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.ui.platform.LocalContext
-import com.sandeep.silentzone.utils.FeedbackUtils
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -87,7 +76,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,6 +87,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.sandeep.silentzone.ImportantContact
 import com.sandeep.silentzone.LocationZone
 import com.sandeep.silentzone.RingerMode
+import com.sandeep.silentzone.utils.FeedbackUtils
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,20 +130,19 @@ fun SilentScreen(
     contactCount: Int = 0,
     dailyPeacefulTime: Long = 0,
     recentAnalytics: List<com.sandeep.silentzone.AnalyticsEvent> = emptyList(),
-    batteryUsage: com.sandeep.silentzone.BatteryUsage = com.sandeep.silentzone.BatteryUsage(0.0, 0.0, 0.0, 0.0)
+    batteryUsage: com.sandeep.silentzone.BatteryUsage =
+        com.sandeep.silentzone.BatteryUsage(0.0, 0.0, 0.0, 0.0)
 ) {
     var selectedScreen by remember { mutableIntStateOf(0) }
-    
+
     LaunchedEffect(selectedScreen) {
         if (selectedScreen == 1) {
             onNavigateToZones()
         }
     }
-    
-    BackHandler(enabled = selectedScreen != 0) {
-        selectedScreen = 0
-    }
-    
+
+    BackHandler(enabled = selectedScreen != 0) { selectedScreen = 0 }
+
     var showMapSelection by remember { mutableStateOf(false) }
     var showAddTypeDialog by remember { mutableStateOf(false) }
     var pendingSsid by remember { mutableStateOf<String?>(null) }
@@ -164,11 +156,12 @@ fun SilentScreen(
 
     LaunchedEffect(updateReadyToInstall) {
         if (updateReadyToInstall) {
-            val result = snackbarHostState.showSnackbar(
-                message = "An update has just been downloaded.",
-                actionLabel = "RESTART",
-                duration = androidx.compose.material3.SnackbarDuration.Indefinite
-            )
+            val result =
+                snackbarHostState.showSnackbar(
+                    message = "An update has just been downloaded.",
+                    actionLabel = "RESTART",
+                    duration = androidx.compose.material3.SnackbarDuration.Indefinite
+                )
             if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) {
                 onCompleteUpdate()
             }
@@ -191,25 +184,36 @@ fun SilentScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = when (selectedScreen) {
-                                0 -> "Home"
-                                1 -> "Zones"
-                                2 -> "Contacts"
-                                3 -> "Feedback"
-                                else -> "SilentZone"
-                            },
-                            style = MaterialTheme.typography.headlineSmall.copy(
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = (-0.5).sp
-                            )
+                            text =
+                                when (selectedScreen) {
+                                    0 -> "Home"
+                                    1 -> "Zones"
+                                    2 -> "Contacts"
+                                    3 -> "Feedback"
+                                    else -> "SilentZone"
+                                },
+                            style =
+                                MaterialTheme.typography.headlineSmall.copy(
+                                    fontWeight = FontWeight.Black,
+                                    letterSpacing = (-0.5).sp
+                                )
                         )
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.8f),
-                        titleContentColor = MaterialTheme.colorScheme.onBackground,
-                        actionIconContentColor = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f),
-                        navigationIconContentColor = MaterialTheme.colorScheme.onBackground
-                    ),
+                    colors =
+                        TopAppBarDefaults.topAppBarColors(
+                            containerColor =
+                                MaterialTheme.colorScheme.surface.copy(
+                                    alpha = 0.8f
+                                ),
+                            titleContentColor =
+                                MaterialTheme.colorScheme.onBackground,
+                            actionIconContentColor =
+                                MaterialTheme.colorScheme.onBackground.copy(
+                                    alpha = 0.7f
+                                ),
+                            navigationIconContentColor =
+                                MaterialTheme.colorScheme.onBackground
+                        ),
                     actions = {
                         val context = LocalContext.current
                         IconButton(onClick = { FeedbackUtils.shareApp(context) }) {
@@ -226,63 +230,103 @@ fun SilentScreen(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.1f))
+                    border =
+                        BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                        )
                 ) {
-                    NavigationBar(
-                        containerColor = Color.Transparent,
-                        tonalElevation = 0.dp
-                    ) {
+                    NavigationBar(containerColor = Color.Transparent, tonalElevation = 0.dp) {
                         NavigationBarItem(
                             selected = selectedScreen == 0,
                             onClick = { selectedScreen = 0 },
                             icon = { Icon(Icons.Default.Home, null) },
                             label = { Text("Home", fontWeight = FontWeight.Bold) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                            )
+                            colors =
+                                NavigationBarItemDefaults.colors(
+                                    selectedIconColor =
+                                        MaterialTheme.colorScheme.primary,
+                                    selectedTextColor =
+                                        MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor =
+                                        MaterialTheme.colorScheme.onSurface
+                                            .copy(alpha = 0.4f),
+                                    unselectedTextColor =
+                                        MaterialTheme.colorScheme.onSurface
+                                            .copy(alpha = 0.4f),
+                                    indicatorColor =
+                                        MaterialTheme.colorScheme.primary.copy(
+                                            alpha = 0.1f
+                                        )
+                                )
                         )
                         NavigationBarItem(
                             selected = selectedScreen == 1,
                             onClick = { selectedScreen = 1 },
                             icon = { Icon(Icons.Default.GridView, null) },
                             label = { Text("Zones", fontWeight = FontWeight.Bold) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.secondary,
-                                selectedTextColor = MaterialTheme.colorScheme.secondary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                indicatorColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
-                            )
+                            colors =
+                                NavigationBarItemDefaults.colors(
+                                    selectedIconColor =
+                                        MaterialTheme.colorScheme.secondary,
+                                    selectedTextColor =
+                                        MaterialTheme.colorScheme.secondary,
+                                    unselectedIconColor =
+                                        MaterialTheme.colorScheme.onSurface
+                                            .copy(alpha = 0.4f),
+                                    unselectedTextColor =
+                                        MaterialTheme.colorScheme.onSurface
+                                            .copy(alpha = 0.4f),
+                                    indicatorColor =
+                                        MaterialTheme.colorScheme.secondary
+                                            .copy(alpha = 0.1f)
+                                )
                         )
                         NavigationBarItem(
                             selected = selectedScreen == 2,
                             onClick = { selectedScreen = 2 },
                             icon = { Icon(Icons.Default.Phone, null) },
                             label = { Text("Contacts", fontWeight = FontWeight.Bold) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                            )
+                            colors =
+                                NavigationBarItemDefaults.colors(
+                                    selectedIconColor =
+                                        MaterialTheme.colorScheme.primary,
+                                    selectedTextColor =
+                                        MaterialTheme.colorScheme.primary,
+                                    unselectedIconColor =
+                                        MaterialTheme.colorScheme.onSurface
+                                            .copy(alpha = 0.4f),
+                                    unselectedTextColor =
+                                        MaterialTheme.colorScheme.onSurface
+                                            .copy(alpha = 0.4f),
+                                    indicatorColor =
+                                        MaterialTheme.colorScheme.primary.copy(
+                                            alpha = 0.1f
+                                        )
+                                )
                         )
                         NavigationBarItem(
                             selected = selectedScreen == 3,
                             onClick = { selectedScreen = 3 },
                             icon = { Icon(Icons.Default.Feedback, null) },
                             label = { Text("Feedback", fontWeight = FontWeight.Bold) },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.tertiary,
-                                selectedTextColor = MaterialTheme.colorScheme.tertiary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
-                                indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
-                            )
+                            colors =
+                                NavigationBarItemDefaults.colors(
+                                    selectedIconColor =
+                                        MaterialTheme.colorScheme.tertiary,
+                                    selectedTextColor =
+                                        MaterialTheme.colorScheme.tertiary,
+                                    unselectedIconColor =
+                                        MaterialTheme.colorScheme.onSurface
+                                            .copy(alpha = 0.4f),
+                                    unselectedTextColor =
+                                        MaterialTheme.colorScheme.onSurface
+                                            .copy(alpha = 0.4f),
+                                    indicatorColor =
+                                        MaterialTheme.colorScheme.tertiary.copy(
+                                            alpha = 0.1f
+                                        )
+                                )
                         )
                     }
                 }
@@ -293,67 +337,75 @@ fun SilentScreen(
                         onClick = {
                             if (selectedScreen == 1) {
                                 onLogClickCreateZone()
-                                showAddTypeDialog = true 
+                                showAddTypeDialog = true
                             } else {
                                 onPickContact()
                             }
                         },
-                        containerColor = if (selectedScreen == 1) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.primary,
+                        containerColor =
+                            if (selectedScreen == 1) MaterialTheme.colorScheme.secondary
+                            else MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary,
                         shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Icon(Icons.Default.Add, contentDescription = "Add")
-                    }
+                    ) { Icon(Icons.Default.Add, contentDescription = "Add") }
                 }
             },
             snackbarHost = { androidx.compose.material3.SnackbarHost(snackbarHostState) }
         ) { innerPadding ->
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(innerPadding)
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(MaterialTheme.colorScheme.background)
+                        .padding(innerPadding)
             ) {
                 AnimatedContent(
                     targetState = selectedScreen,
                     transitionSpec = { fadeIn() togetherWith fadeOut() }
                 ) { target ->
                     when (target) {
-                        0 -> DashboardScreen(
-                            accessGranted = accessGranted,
-                            mode = mode,
-                            isFallback = isFallback,
-                            onGrantAccess = onGrantAccess,
-                            setSilent = setSilent,
-                            setVibrate = setVibrate,
-                            setNormal = setNormal,
-                            currentWifiSsid = currentWifiSsid,
-                            hasBackgroundLocation = hasBackgroundLocation,
-                            isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations,
-                            onRequestBackgroundLocation = onRequestBackgroundLocation,
-                            onDisableBatteryOptimization = onDisableBatteryOptimization,
-                            zoneCount = zoneCount,
-                            contactCount = contactCount,
-                            dailyPeacefulTime = dailyPeacefulTime,
-                            recentAnalytics = recentAnalytics,
-                            batteryUsage = batteryUsage,
-                            onNavigateToZones = { selectedScreen = 1 },
-                            onNavigateToWhitelist = { selectedScreen = 2 },
-                            onShowBatteryDetails = { showBatteryDetails = true },
-                            onViewAll = { showActivityHistory = true }
-                        )
-                        1 -> ZonesScreen(
-                            silentSsids = silentSsids,
-                            vibrateSsids = vibrateSsids,
-                            normalSsids = normalSsids,
-                            locationZones = locationZones,
-                            onDeleteSsid = onDeleteSsid,
-                            onDeleteLocationZone = onDeleteLocationZone
-                        )
-                        2 -> ContactsScreen(
-                            contacts = importantContacts,
-                            onDeleteContact = onDeleteContact
-                        )
+                        0 ->
+                            DashboardScreen(
+                                accessGranted = accessGranted,
+                                mode = mode,
+                                isFallback = isFallback,
+                                onGrantAccess = onGrantAccess,
+                                setSilent = setSilent,
+                                setVibrate = setVibrate,
+                                setNormal = setNormal,
+                                currentWifiSsid = currentWifiSsid,
+                                hasBackgroundLocation = hasBackgroundLocation,
+                                isIgnoringBatteryOptimizations =
+                                    isIgnoringBatteryOptimizations,
+                                onRequestBackgroundLocation = onRequestBackgroundLocation,
+                                onDisableBatteryOptimization = onDisableBatteryOptimization,
+                                zoneCount = zoneCount,
+                                contactCount = contactCount,
+                                dailyPeacefulTime = dailyPeacefulTime,
+                                recentAnalytics = recentAnalytics,
+                                batteryUsage = batteryUsage,
+                                onNavigateToZones = { selectedScreen = 1 },
+                                onNavigateToWhitelist = { selectedScreen = 2 },
+                                onShowBatteryDetails = { showBatteryDetails = true },
+                                onViewAll = { showActivityHistory = true }
+                            )
+
+                        1 ->
+                            ZonesScreen(
+                                silentSsids = silentSsids,
+                                vibrateSsids = vibrateSsids,
+                                normalSsids = normalSsids,
+                                locationZones = locationZones,
+                                onDeleteSsid = onDeleteSsid,
+                                onDeleteLocationZone = onDeleteLocationZone
+                            )
+
+                        2 ->
+                            ContactsScreen(
+                                contacts = importantContacts,
+                                onDeleteContact = onDeleteContact
+                            )
+
                         3 -> FeedbackScreen()
                     }
                 }
@@ -365,13 +417,20 @@ fun SilentScreen(
         // Bottom Sheets (Replaced Dialogs)
         if (showAddTypeDialog) {
             AddZoneTypeBottomSheet(
-                onCurrentLocation = { 
+                onCurrentLocation = {
                     radiusSource = RadiusSource.CurrentLocation
                     showRadiusDialog = true
-                    showAddTypeDialog = false 
+                    showAddTypeDialog = false
                 },
-                onSelectMap = { showMapSelection = true; showAddTypeDialog = false },
-                onWifi = { addZone(); showWifiSelection = true; showAddTypeDialog = false },
+                onSelectMap = {
+                    showMapSelection = true
+                    showAddTypeDialog = false
+                },
+                onWifi = {
+                    addZone()
+                    showWifiSelection = true
+                    showAddTypeDialog = false
+                },
                 onDismiss = { showAddTypeDialog = false },
                 onRequestPermission = onRequestPermission
             )
@@ -510,7 +569,6 @@ fun DashboardScreen(
             } else {
                 // --- ADVANCED DASHBOARD (Existing Users) ---
                 AnalyticsSummaryCard(dailyTotalMillis = dailyPeacefulTime)
-
             }
 
             // --- COMMON SETUP CHECKLIST ---
@@ -526,7 +584,8 @@ fun DashboardScreen(
                             subtitle = "Required to mute sounds",
                             onClick = onGrantAccess,
                             color = MaterialTheme.colorScheme.error,
-                            rationale = "To enable complete silence, Do Not Disturb access is essential. Without this permission, SilentZone can only switch your device to Vibrate mode, but cannot fully silent your phone.",
+                            rationale =
+                                "To enable complete silence, Do Not Disturb access is essential. Without this permission, SilentZone can only switch your device to Vibrate mode, but cannot fully silent your phone.",
                             isGranted = accessGranted
                         )
                         SetupStepItem(
@@ -534,7 +593,8 @@ fun DashboardScreen(
                             subtitle = "Required to detect zones",
                             onClick = onRequestBackgroundLocation,
                             color = MaterialTheme.colorScheme.primary,
-                            rationale = "Continuous location access is required to detect geofences reliably in the background. Without 'Allow all the time' permission, automated location-based silencing will fail when the app is minimized.",
+                            rationale =
+                                "Continuous location access is required to detect geofences reliably in the background. Without 'Allow all the time' permission, automated location-based silencing will fail when the app is minimized.",
                             isGranted = hasBackgroundLocation
                         )
                         SetupStepItem(
@@ -542,15 +602,13 @@ fun DashboardScreen(
                             subtitle = "Disable for 100% reliability",
                             onClick = onDisableBatteryOptimization,
                             color = MaterialTheme.colorScheme.tertiary,
-                            rationale = "Android's power management may terminate background services to save battery. Disabling battery optimization for SilentZone guarantees uninterrupted automation and reliable zone detection.",
+                            rationale =
+                                "Android's power management may terminate background services to save battery. Disabling battery optimization for SilentZone guarantees uninterrupted automation and reliable zone detection.",
                             isGranted = isIgnoringBatteryOptimizations
                         )
                     }
                 }
             }
-
-
-            RecentActivityList(events = recentAnalytics, onViewAll = onViewAll)
 
             // --- COMMON CONTROLS (Moved to bottom) ---
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -598,19 +656,32 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Box(
-                                modifier = Modifier
-                                    .size(40.dp)
-                                    .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f), CircleShape),
+                                modifier =
+                                    Modifier
+                                        .size(40.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.secondary
+                                                .copy(alpha = 0.1f),
+                                            CircleShape
+                                        ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Wifi, null, tint = MaterialTheme.colorScheme.secondary, modifier = Modifier.size(20.dp))
+                                Icon(
+                                    Icons.Default.Wifi,
+                                    null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(
                                     "Connected to Wi-Fi",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                    color =
+                                        MaterialTheme.colorScheme.onSurface.copy(
+                                            alpha = 0.5f
+                                        )
                                 )
                                 Text(
                                     currentWifiSsid,
@@ -623,8 +694,7 @@ fun DashboardScreen(
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(16.dp))
+            RecentActivityList(events = recentAnalytics, onViewAll = onViewAll)
         }
     }
 }
@@ -643,9 +713,7 @@ fun ZonesScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
 
         // Section 1: Geofence Areas
         item { DashboardSectionHeader("Geofence Areas") }
@@ -677,44 +745,51 @@ fun ZonesScreen(
             }
         } else {
             items(silentSsids.toList()) { ssid ->
-                ZoneItemCard(ssid = ssid, mode = RingerMode.SILENT, onDelete = { onDeleteSsid(ssid) })
+                ZoneItemCard(
+                    ssid = ssid,
+                    mode = RingerMode.SILENT,
+                    onDelete = { onDeleteSsid(ssid) }
+                )
             }
             items(vibrateSsids.toList()) { ssid ->
-                ZoneItemCard(ssid = ssid, mode = RingerMode.VIBRATE, onDelete = { onDeleteSsid(ssid) })
+                ZoneItemCard(
+                    ssid = ssid,
+                    mode = RingerMode.VIBRATE,
+                    onDelete = { onDeleteSsid(ssid) }
+                )
             }
             items(normalSsids.toList()) { ssid ->
-                ZoneItemCard(ssid = ssid, mode = RingerMode.NORMAL, onDelete = { onDeleteSsid(ssid) })
+                ZoneItemCard(
+                    ssid = ssid,
+                    mode = RingerMode.NORMAL,
+                    onDelete = { onDeleteSsid(ssid) }
+                )
             }
         }
     }
 }
 
 @Composable
-fun ContactsScreen(
-    contacts: List<ImportantContact>,
-    onDeleteContact: (String) -> Unit
-) {
+fun ContactsScreen(contacts: List<ImportantContact>, onDeleteContact: (String) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item {
-            Spacer(modifier = Modifier.height(16.dp))
-        }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
 
         if (contacts.isEmpty()) {
-            item {
-                SafeEmptyState()
-            }
+            item { SafeEmptyState() }
         } else {
             items(contacts) { contact ->
-                ImportantContactItemCard(contact = contact, onDelete = { onDeleteContact(contact.phoneNumber) })
+                ImportantContactItemCard(
+                    contact = contact,
+                    onDelete = { onDeleteContact(contact.phoneNumber) }
+                )
             }
         }
     }
 }
-
 
 @Composable
 fun EmptyStateText(text: String) {
@@ -726,9 +801,13 @@ fun EmptyStateText(text: String) {
         verticalArrangement = Arrangement.Center
     ) {
         Box(
-            modifier = Modifier
-                .size(100.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), CircleShape),
+            modifier =
+                Modifier
+                    .size(100.dp)
+                    .background(
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        CircleShape
+                    ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -759,12 +838,13 @@ fun SafeEmptyState() {
     ) {
         // Icon
         Box(
-            modifier = Modifier
-                .size(96.dp)
-                .background(
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                    CircleShape
-                ),
+            modifier =
+                Modifier
+                    .size(96.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                        CircleShape
+                    ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -794,7 +874,6 @@ fun SafeEmptyState() {
             )
         }
 
-
         // Hint
         Text(
             "👇  Press the + button below and choose a contact.",
@@ -814,9 +893,13 @@ private fun SafeHowItWorksRow(step: String, title: String, subtitle: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape),
+            modifier =
+                Modifier
+                    .size(36.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                        CircleShape
+                    ),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -827,8 +910,17 @@ private fun SafeHowItWorksRow(step: String, title: String, subtitle: String) {
             )
         }
         Column {
-            Text(title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f))
+            Text(
+                title,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f)
+            )
         }
     }
 }
@@ -843,7 +935,7 @@ fun SystemStatusSection(
     if (!hasBackgroundLocation || !isIgnoringBatteryOptimizations) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             DashboardSectionHeader("System Health")
-            
+
             if (!hasBackgroundLocation) {
                 StatusCard(
                     title = "Background Location",
@@ -853,7 +945,7 @@ fun SystemStatusSection(
                     color = MaterialTheme.colorScheme.error
                 )
             }
-            
+
             if (!isIgnoringBatteryOptimizations) {
                 StatusCard(
                     title = "Battery Optimization",
@@ -879,15 +971,16 @@ fun StatusCard(
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
-                    modifier = Modifier
-                        .size(32.dp)
-                        .background(color.copy(alpha = 0.1f), CircleShape),
+                    modifier =
+                        Modifier
+                            .size(32.dp)
+                            .background(color.copy(alpha = 0.1f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.GppMaybe, 
-                        null, 
-                        tint = color, 
+                        Icons.Default.GppMaybe,
+                        null,
+                        tint = color,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -909,12 +1002,14 @@ fun StatusCard(
             Button(
                 onClick = onClick,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = color.copy(alpha = 0.2f), contentColor = color),
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = color.copy(alpha = 0.2f),
+                        contentColor = color
+                    ),
                 shape = RoundedCornerShape(12.dp),
                 elevation = ButtonDefaults.buttonElevation(0.dp)
-            ) {
-                Text(actionText, fontWeight = FontWeight.Bold)
-            }
+            ) { Text(actionText, fontWeight = FontWeight.Bold) }
         }
     }
 }
@@ -930,12 +1025,13 @@ fun FeedbackScreen() {
     var message by remember { mutableStateOf("") }
     val context = LocalContext.current
 
-    val categories = listOf(
-        "General" to Icons.Default.Feedback,
-        "Bug" to Icons.Default.BugReport,
-        "Feature" to Icons.Default.Lightbulb,
-        "Support" to Icons.Default.QuestionAnswer
-    )
+    val categories =
+        listOf(
+            "General" to Icons.Default.Feedback,
+            "Bug" to Icons.Default.BugReport,
+            "Feature" to Icons.Default.Lightbulb,
+            "Support" to Icons.Default.QuestionAnswer
+        )
 
     Column(
         modifier = Modifier
@@ -949,9 +1045,13 @@ fun FeedbackScreen() {
 
         // Header Illustration/Icon
         Box(
-            modifier = Modifier
-                .size(120.dp)
-                .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f), CircleShape),
+            modifier =
+                Modifier
+                    .size(120.dp)
+                    .background(
+                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
+                        CircleShape
+                    ),
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -985,10 +1085,14 @@ fun FeedbackScreen() {
                 val starIndex = index + 1
                 IconButton(onClick = { rating = starIndex }) {
                     Icon(
-                        imageVector = if (starIndex <= rating) Icons.Default.Star else Icons.Default.StarOutline,
+                        imageVector =
+                            if (starIndex <= rating) Icons.Default.Star
+                            else Icons.Default.StarOutline,
                         contentDescription = null,
                         modifier = Modifier.size(36.dp),
-                        tint = if (starIndex <= rating) Color(0xFFFFB400) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
+                        tint =
+                            if (starIndex <= rating) Color(0xFFFFB400)
+                            else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f)
                     )
                 }
             }
@@ -1024,14 +1128,27 @@ fun FeedbackScreen() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 150.dp),
-                placeholder = { Text("Tell us what's on your mind...", color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)) },
+                placeholder = {
+                    Text(
+                        "Tell us what's on your mind...",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                    )
+                },
                 shape = RoundedCornerShape(20.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = MaterialTheme.colorScheme.tertiary,
-                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                )
+                colors =
+                    OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.tertiary,
+                        unfocusedBorderColor =
+                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        focusedContainerColor =
+                            MaterialTheme.colorScheme.surfaceVariant.copy(
+                                alpha = 0.3f
+                            ),
+                        unfocusedContainerColor =
+                            MaterialTheme.colorScheme.surfaceVariant.copy(
+                                alpha = 0.3f
+                            )
+                    )
             )
         }
 
@@ -1044,13 +1161,18 @@ fun FeedbackScreen() {
                 .fillMaxWidth()
                 .height(64.dp),
             shape = RoundedCornerShape(20.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.tertiary,
-                contentColor = MaterialTheme.colorScheme.onTertiary
-            ),
+            colors =
+                ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                    contentColor = MaterialTheme.colorScheme.onTertiary
+                ),
             elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
         ) {
-            Text("Send Feedback", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(
+                "Send Feedback",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Icon(Icons.Default.AutoAwesome, null, modifier = Modifier.size(20.dp))
         }
@@ -1060,23 +1182,22 @@ fun FeedbackScreen() {
 }
 
 @Composable
-fun CategoryChip(
-    name: String,
-    icon: ImageVector,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
+fun CategoryChip(name: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
     Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() }
-            .border(
-                1.dp,
-                if (isSelected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                RoundedCornerShape(16.dp)
-            ),
-        color = if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .clickable { onClick() }
+                .border(
+                    1.dp,
+                    if (isSelected) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
+                    RoundedCornerShape(16.dp)
+                ),
+        color =
+            if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
     ) {
         Column(
             modifier = Modifier.padding(vertical = 12.dp),
@@ -1087,14 +1208,18 @@ fun CategoryChip(
                 icon,
                 contentDescription = null,
                 modifier = Modifier.size(20.dp),
-                tint = if (isSelected) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                tint =
+                    if (isSelected) MaterialTheme.colorScheme.tertiary
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 name,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                color =
+                    if (isSelected) MaterialTheme.colorScheme.onSurface
+                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
             )
         }
     }

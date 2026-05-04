@@ -22,6 +22,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 data class LocationZone(
         val id: String,
@@ -98,6 +100,10 @@ constructor(
         private const val PREF_KEY_TOTAL_REPORTED_MILLIS = "total_reported_millis"
         private const val ACTION_NETWORK_CALLBACK = "com.sandeep.silentzone.ACTION_NETWORK_CALLBACK"
     }
+
+    private val wifiMutex = Mutex()
+    private var lastProcessedSsid: String? = null
+    private var lastWifiProcessTime: Long = 0
 
     private val networkPendingIntent: PendingIntent by lazy {
         val intent =
@@ -337,47 +343,57 @@ constructor(
     }
 
     suspend fun onWifiChanged(currentSsid: String?) {
-        val zones = getWifiZonesFlow().first()
-        val activeWifiSet = getActiveWifiSet()
+        wifiMutex.withLock {
+            val now = System.currentTimeMillis()
+            // Deduplication: Ignore identical SSID changes within 2 seconds
+            if (currentSsid == lastProcessedSsid && (now - lastWifiProcessTime) < 2000) {
+                return@withLock
+            }
+            lastProcessedSsid = currentSsid
+            lastWifiProcessTime = now
 
-        if (currentSsid == android.net.wifi.WifiManager.UNKNOWN_SSID) {
-            android.util.Log.w(
-                    "SilentModeRepo",
-                    "Received UNKNOWN_SSID due to background limits. Deferring disconnect to prevent wrong mode switch."
-            )
-            return
-        }
+            val zones = getWifiZonesFlow().first()
+            val activeWifiSet = getActiveWifiSet()
 
-        if (currentSsid != null) {
-            val zone = zones.find { it.ssid == currentSsid }
-            if (zone != null) {
-                if (!activeWifiSet.contains(currentSsid)) {
-                    saveOriginalMode()
-                    addToWifiSet(currentSsid)
-                    applyMode(zone.mode)
-                    logEntry(currentSsid, "WIFI", zone.mode)
-                    unregisterWifiCallback() // Stop background listener, service takes over
-                    startMonitoringService(currentSsid)
+            if (currentSsid == android.net.wifi.WifiManager.UNKNOWN_SSID) {
+                android.util.Log.w(
+                        "SilentModeRepo",
+                        "Received UNKNOWN_SSID due to background limits. Deferring disconnect to prevent wrong mode switch."
+                )
+                return@withLock
+            }
+
+            if (currentSsid != null) {
+                val zone = zones.find { it.ssid == currentSsid }
+                if (zone != null) {
+                    if (!activeWifiSet.contains(currentSsid)) {
+                        saveOriginalMode()
+                        addToWifiSet(currentSsid)
+                        applyMode(zone.mode)
+                        logEntry(currentSsid, "WIFI", zone.mode)
+                        unregisterWifiCallback() // Stop background listener, service takes over
+                        startMonitoringService(currentSsid)
+                    }
+                } else if (activeWifiSet.isNotEmpty()) {
+                    // Not in a saved zone anymore
+                    android.util.Log.d("SilentModeRepo", "Exited WiFi zone: $activeWifiSet")
+                    activeWifiSet.forEach {
+                        removeFromWifiSet(it)
+                        logExit(it)
+                    }
                 }
             } else if (activeWifiSet.isNotEmpty()) {
-                // Not in a saved zone anymore
-                android.util.Log.d("SilentModeRepo", "Exited WiFi zone: $activeWifiSet")
+                // Disconnected from WiFi (currentSsid is null)
+                android.util.Log.d("SilentModeRepo", "WiFi disconnected. Clearing active zones.")
                 activeWifiSet.forEach {
                     removeFromWifiSet(it)
                     logExit(it)
                 }
             }
-        } else if (activeWifiSet.isNotEmpty()) {
-            // Disconnected from WiFi (currentSsid is null)
-            android.util.Log.d("SilentModeRepo", "WiFi disconnected. Clearing active zones.")
-            activeWifiSet.forEach {
-                removeFromWifiSet(it)
-                logExit(it)
-            }
-        }
 
-        // Always sync state to ensure persistent monitoring notification is active
-        checkAndRestore()
+            // Always sync state to ensure persistent monitoring notification is active
+            checkAndRestore()
+        }
     }
 
     suspend fun onLocationTransition(id: String, transitionType: Int) {
@@ -608,14 +624,24 @@ constructor(
 
     // Analytics Helpers
     private suspend fun logEntry(zoneName: String, zoneType: String, mode: RingerMode) {
+        val now = System.currentTimeMillis()
+        // Ensure only one active session at a time
+        dao.closeAllActiveEvents(now)
+        
         val event =
                 com.sandeep.silentzone.data.AnalyticsEventEntity(
                         zoneName = zoneName,
                         zoneType = zoneType,
-                        entryTime = System.currentTimeMillis(),
+                        entryTime = now,
                         mode = mode
                 )
         dao.insertAnalyticsEvent(event)
+    }
+
+    suspend fun sanitizeAnalytics() {
+        // Close any "Active" sessions that are stale (e.g., from a previous run)
+        val now = System.currentTimeMillis()
+        dao.closeAllActiveEvents(now)
     }
 
     private suspend fun logExit(zoneName: String) {

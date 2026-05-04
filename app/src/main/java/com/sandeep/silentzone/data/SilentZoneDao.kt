@@ -62,4 +62,10 @@ interface SilentZoneDao {
 
     @Query("SELECT * FROM analytics_events WHERE entryTime >= :startTime")
     suspend fun getEventsSinceList(startTime: Long): List<AnalyticsEventEntity>
+
+    @Query("SELECT * FROM analytics_events WHERE exitTime IS NULL")
+    suspend fun getAllActiveEvents(): List<AnalyticsEventEntity>
+
+    @Query("UPDATE analytics_events SET exitTime = :exitTime, durationMillis = :exitTime - entryTime WHERE exitTime IS NULL")
+    suspend fun closeAllActiveEvents(exitTime: Long)
 }
