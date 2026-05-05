@@ -195,7 +195,10 @@ fun MapSelectionScreen(
 
     Scaffold(
         floatingActionButton = {
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                horizontalAlignment = Alignment.End,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
                 // Map Style Toggle
                 FloatingActionButton(
                     onClick = {
@@ -240,7 +243,6 @@ fun MapSelectionScreen(
     ) { padding ->
         Box(
             modifier = Modifier
-                .padding(padding)
                 .fillMaxSize()
         ) {
             GoogleMap(
@@ -327,6 +329,7 @@ fun MapSelectionScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.statusBars)
                     .padding(16.dp)
                     .animateContentSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -543,6 +546,7 @@ fun MapSelectionScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .imePadding()
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 48.dp)
             ) {
