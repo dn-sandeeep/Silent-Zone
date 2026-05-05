@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -360,7 +361,6 @@ fun SilentScreen(
                     Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.background)
-                        .padding(innerPadding)
             ) {
                 AnimatedContent(
                     targetState = selectedScreen,
@@ -369,6 +369,7 @@ fun SilentScreen(
                     when (target) {
                         0 ->
                             DashboardScreen(
+                                contentPadding = innerPadding,
                                 accessGranted = accessGranted,
                                 mode = mode,
                                 isFallback = isFallback,
@@ -397,6 +398,7 @@ fun SilentScreen(
 
                         1 ->
                             ZonesScreen(
+                                contentPadding = innerPadding,
                                 silentSsids = silentSsids,
                                 vibrateSsids = vibrateSsids,
                                 normalSsids = normalSsids,
@@ -407,11 +409,12 @@ fun SilentScreen(
 
                         2 ->
                             ContactsScreen(
+                                contentPadding = innerPadding,
                                 contacts = importantContacts,
                                 onDeleteContact = onDeleteContact
                             )
 
-                        3 -> FeedbackScreen()
+                        3 -> FeedbackScreen(contentPadding = innerPadding)
                     }
                 }
                 // Operation status feedback (Top Layer)
@@ -500,6 +503,7 @@ fun SilentScreen(
 
 @Composable
 fun DashboardScreen(
+    contentPadding: PaddingValues,
     accessGranted: Boolean,
     mode: RingerMode,
     isFallback: Boolean,
@@ -530,6 +534,8 @@ fun DashboardScreen(
             .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(modifier = Modifier.height(contentPadding.calculateTopPadding()))
+        
         PulseStatusHeader(mode = mode, isFallback = isFallback)
 
         Column(
@@ -707,11 +713,14 @@ fun DashboardScreen(
             }
             RecentActivityList(events = recentAnalytics, onViewAll = onViewAll)
         }
+        
+        Spacer(modifier = Modifier.height(contentPadding.calculateBottomPadding() + 20.dp))
     }
 }
 
 @Composable
 fun ZonesScreen(
+    contentPadding: PaddingValues,
     silentSsids: Set<String>,
     vibrateSsids: Set<String>,
     normalSsids: Set<String>,
@@ -721,11 +730,14 @@ fun ZonesScreen(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(
+            top = contentPadding.calculateTopPadding() + 16.dp,
+            bottom = contentPadding.calculateBottomPadding() + 100.dp,
+            start = 16.dp,
+            end = 16.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        item { Spacer(modifier = Modifier.height(6.dp)) }
-
         // Section 1: Geofence Areas
         item { DashboardSectionHeader("Geofence Areas") }
         if (locationZones.isEmpty()) {
@@ -781,14 +793,21 @@ fun ZonesScreen(
 }
 
 @Composable
-fun ContactsScreen(contacts: List<ImportantContact>, onDeleteContact: (String) -> Unit) {
+fun ContactsScreen(
+    contentPadding: PaddingValues,
+    contacts: List<ImportantContact>,
+    onDeleteContact: (String) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
+        contentPadding = PaddingValues(
+            top = contentPadding.calculateTopPadding() + 16.dp,
+            bottom = contentPadding.calculateBottomPadding() + 100.dp,
+            start = 16.dp,
+            end = 16.dp
+        ),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        item { Spacer(modifier = Modifier.height(16.dp)) }
-
         if (contacts.isEmpty()) {
             item { SafeEmptyState() }
         } else {
@@ -1030,7 +1049,7 @@ sealed class RadiusSource {
 }
 
 @Composable
-fun FeedbackScreen() {
+fun FeedbackScreen(contentPadding: PaddingValues) {
     var rating by remember { mutableIntStateOf(5) }
     var selectedCategory by remember { mutableStateOf("General") }
     var message by remember { mutableStateOf("") }
@@ -1047,12 +1066,13 @@ fun FeedbackScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(contentPadding.calculateTopPadding() + 8.dp))
 
         // Header Illustration/Icon
         Box(
@@ -1144,50 +1164,6 @@ fun FeedbackScreen() {
             Icon(Icons.Default.Send, null, modifier = Modifier.size(20.dp))
         }
 
-        Spacer(modifier = Modifier.height(40.dp))
-    }
-}
-
-@Composable
-fun CategoryChip(name: String, icon: ImageVector, isSelected: Boolean, onClick: () -> Unit) {
-    Surface(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
-                .clickable { onClick() }
-                .border(
-                    1.dp,
-                    if (isSelected) MaterialTheme.colorScheme.tertiary
-                    else MaterialTheme.colorScheme.outline.copy(alpha = 0.1f),
-                    RoundedCornerShape(16.dp)
-                ),
-        color =
-            if (isSelected) MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
-            else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.2f)
-    ) {
-        Column(
-            modifier = Modifier.padding(vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint =
-                    if (isSelected) MaterialTheme.colorScheme.tertiary
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                name,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                color =
-                    if (isSelected) MaterialTheme.colorScheme.onSurface
-                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-            )
-        }
+        Spacer(modifier = Modifier.height(contentPadding.calculateBottomPadding() + 40.dp))
     }
 }
