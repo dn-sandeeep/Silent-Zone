@@ -67,6 +67,9 @@ class MainActivity : ComponentActivity() {
         appUpdateHelper.checkForUpdates()
 
         enableEdgeToEdge()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isNavigationBarContrastEnforced = false
+        }
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
         fetchCurrentLocation()
 
