@@ -9,6 +9,7 @@ import android.os.BatteryManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.os.Build
 import com.sandeep.silentzone.data.ImportantContactEntity
 import com.sandeep.silentzone.data.LocationZoneEntity
 import com.sandeep.silentzone.data.SilentZoneDao
@@ -873,7 +874,11 @@ constructor(
                             android.net.ConnectivityManager
             val network = cm.activeNetwork
             val capabilities = cm.getNetworkCapabilities(network)
-            val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
+            val wifiInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                capabilities?.transportInfo as? android.net.wifi.WifiInfo
+            } else {
+                null
+            }
             if (wifiInfo != null) {
                 @Suppress("DEPRECATION") val ssid = wifiInfo.ssid
                 if (ssid != null && ssid != android.net.wifi.WifiManager.UNKNOWN_SSID) {

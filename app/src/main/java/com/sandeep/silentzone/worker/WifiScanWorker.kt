@@ -6,6 +6,7 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
@@ -41,7 +42,11 @@ class WifiScanWorker @AssistedInject constructor(
             val activeNetwork = connectivityManager.activeNetwork
             if (activeNetwork != null) {
                 val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
-                val wifiInfo = capabilities?.transportInfo as? WifiInfo
+                val wifiInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    capabilities?.transportInfo as? WifiInfo
+                } else {
+                    null
+                }
                 if (wifiInfo != null && wifiInfo.ssid != null && wifiInfo.ssid != WifiManager.UNKNOWN_SSID) {
                     ssid = wifiInfo.ssid.trim('"')
                 }
