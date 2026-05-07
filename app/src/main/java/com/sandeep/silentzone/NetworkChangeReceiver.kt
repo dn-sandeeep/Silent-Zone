@@ -27,7 +27,6 @@ class NetworkChangeReceiver : BroadcastReceiver() {
     @Inject
     lateinit var repository: SilentModeRepository
 
-    @RequiresApi(Build.VERSION_CODES.Q)
     override fun onReceive(context: Context, intent: Intent) {
         val network = IntentCompat.getParcelableExtra(intent, ConnectivityManager.EXTRA_NETWORK, Network::class.java)
         Log.d("NetworkChangeReceiver", "System network signal received (Network: $network)")
@@ -52,7 +51,11 @@ class NetworkChangeReceiver : BroadcastReceiver() {
                 
                 // Method 1: Modern API
                 val capabilities = connectivityManager.getNetworkCapabilities(network)
-                val wifiInfo = capabilities?.transportInfo as? WifiInfo
+                val wifiInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    capabilities?.transportInfo as? WifiInfo
+                } else {
+                    null
+                }
                 if (wifiInfo != null) {
                     @Suppress("DEPRECATION")
                     val currentSsid = wifiInfo.ssid

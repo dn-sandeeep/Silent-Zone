@@ -348,7 +348,11 @@ class MainActivity : ComponentActivity() {
                                 android.net.ConnectivityManager
                 val targetNetwork = network ?: connectivityManager.activeNetwork
                 val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
-                val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
+                val wifiInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    capabilities?.transportInfo as? android.net.wifi.WifiInfo
+                } else {
+                    null
+                }
                 if (wifiInfo != null) {
                     @Suppress("DEPRECATION")
                     val ssid = wifiInfo.ssid

@@ -143,7 +143,11 @@ class SilentZoneService : Service() {
             // Priority 2: Modern API (NetworkCapabilities)
             val targetNetwork = network ?: connectivityManager.activeNetwork
             val capabilities = connectivityManager.getNetworkCapabilities(targetNetwork)
-            val wifiInfo = capabilities?.transportInfo as? android.net.wifi.WifiInfo
+            val wifiInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                capabilities?.transportInfo as? android.net.wifi.WifiInfo
+            } else {
+                null
+            }
             if (wifiInfo != null) {
                 @Suppress("DEPRECATION") val ssid = wifiInfo.ssid
 
@@ -198,7 +202,16 @@ class SilentZoneService : Service() {
                     }
                 }
             } else {
-                startForeground(NOTIFICATION_ID, notification)
+                try {
+                    startForeground(NOTIFICATION_ID, notification)
+                } catch (e: Exception) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && 
+                        e is android.app.ForegroundServiceStartNotAllowedException) {
+                        android.util.Log.e("SilentZoneService", "Foreground service start not allowed (API 31-33): ${e.message}")
+                    } else {
+                        android.util.Log.e("SilentZoneService", "Failed to start foreground service: ${e.message}")
+                    }
+                }
             }
         }
         return START_STICKY
