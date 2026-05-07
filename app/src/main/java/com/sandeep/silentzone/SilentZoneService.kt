@@ -198,7 +198,16 @@ class SilentZoneService : Service() {
                     }
                 }
             } else {
-                startForeground(NOTIFICATION_ID, notification)
+                try {
+                    startForeground(NOTIFICATION_ID, notification)
+                } catch (e: Exception) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && 
+                        e is android.app.ForegroundServiceStartNotAllowedException) {
+                        android.util.Log.e("SilentZoneService", "Foreground service start not allowed (API 31-33): ${e.message}")
+                    } else {
+                        android.util.Log.e("SilentZoneService", "Failed to start foreground service: ${e.message}")
+                    }
+                }
             }
         }
         return START_STICKY
