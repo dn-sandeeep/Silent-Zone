@@ -115,6 +115,8 @@ fun SilentScreen(
     onAddLocationZone: (RingerMode, Float) -> Unit,
     onMapZonesSelected: (List<MapZone>, RingerMode) -> Unit,
     onDeleteLocationZone: (String) -> Unit,
+    onUpdateLocationZone: (LocationZone) -> Unit,
+    onUpdateWifiZoneMode: (String, RingerMode) -> Unit,
     initialUserLocation: LatLng?,
     importantContacts: List<ImportantContact>,
     onPickContact: () -> Unit,
@@ -126,7 +128,9 @@ fun SilentScreen(
     onLogClickCreateZone: () -> Unit = {},
     onCompleteUpdate: () -> Unit = {},
     updateReadyToInstall: Boolean = false,
+    hasForegroundLocation: Boolean,
     hasBackgroundLocation: Boolean,
+    hasWifiAutomationPermission: Boolean,
     isIgnoringBatteryOptimizations: Boolean,
     zoneCount: Int = 0,
     contactCount: Int = 0,
@@ -149,12 +153,27 @@ fun SilentScreen(
 
     var showMapSelection by remember { mutableStateOf(false) }
     var showAddTypeDialog by remember { mutableStateOf(false) }
+    var showLocationAddOptions by remember { mutableStateOf(false) }
     var pendingSsid by remember { mutableStateOf<String?>(null) }
+    var pendingCurrentLocationRadius by remember { mutableStateOf<Float?>(null) }
+    var pendingMapZones by remember { mutableStateOf<List<MapZone>?>(null) }
+    var editingWifiSsid by remember { mutableStateOf<String?>(null) }
+    var editingLocationModeZone by remember { mutableStateOf<LocationZone?>(null) }
+    var editingLocationRadiusZone by remember { mutableStateOf<LocationZone?>(null) }
     var showWifiSelection by remember { mutableStateOf(false) }
     var showRadiusDialog by remember { mutableStateOf(false) }
     var radiusSource by remember { mutableStateOf<RadiusSource?>(null) }
     var showBatteryDetails by remember { mutableStateOf(false) }
     var showActivityHistory by remember { mutableStateOf(false) }
+    var showDndPermissionDialog by remember { mutableStateOf(false) }
+
+    fun requestSilentPermissionOrRun(modeToSave: RingerMode, action: () -> Unit) {
+        if (modeToSave == RingerMode.SILENT && !accessGranted) {
+            showDndPermissionDialog = true
+        } else {
+            action()
+        }
+    }
 
     val snackbarHostState = remember { androidx.compose.material3.SnackbarHostState() }
 
@@ -177,7 +196,7 @@ fun SilentScreen(
         MapSelectionScreen(
             initialLocation = startLocation,
             onZonesSelected = { zones ->
-                onMapZonesSelected(zones, RingerMode.SILENT)
+                pendingMapZones = zones
                 showMapSelection = false
             },
             onCancel = { showMapSelection = false }
@@ -403,8 +422,21 @@ fun SilentScreen(
                                 vibrateSsids = vibrateSsids,
                                 normalSsids = normalSsids,
                                 locationZones = locationZones,
+                                isLocationAutomationPaused =
+                                    !hasForegroundLocation || !hasBackgroundLocation,
+                                isWifiAutomationPaused = !hasWifiAutomationPermission,
                                 onDeleteSsid = onDeleteSsid,
-                                onDeleteLocationZone = onDeleteLocationZone
+                                onDeleteLocationZone = onDeleteLocationZone,
+                                onEditLocationMode = { zone -> editingLocationModeZone = zone },
+                                onEditLocationRadius = { zone -> editingLocationRadiusZone = zone },
+                                onEditWifiMode = { ssid -> editingWifiSsid = ssid },
+                                onAddLocationFromEmpty = { showLocationAddOptions = true },
+                                onAddWifiFromEmpty = {
+                                    onRequestPermission {
+                                        addZone()
+                                        showWifiSelection = true
+                                    }
+                                }
                             )
 
                         2 ->
@@ -444,11 +476,27 @@ fun SilentScreen(
             )
         }
 
+        if (showLocationAddOptions) {
+            LocationAddOptionsBottomSheet(
+                onCurrentLocation = {
+                    radiusSource = RadiusSource.CurrentLocation
+                    showRadiusDialog = true
+                    showLocationAddOptions = false
+                },
+                onSelectMap = {
+                    showMapSelection = true
+                    showLocationAddOptions = false
+                },
+                onDismiss = { showLocationAddOptions = false },
+                onRequestPermission = onRequestPermission
+            )
+        }
+
         if (showRadiusDialog) {
             RadiusSelectionBottomSheet(
                 onRadiusSelected = { radius ->
                     if (radiusSource == RadiusSource.CurrentLocation) {
-                        onAddLocationZone(RingerMode.SILENT, radius)
+                        pendingCurrentLocationRadius = radius
                     }
                     showRadiusDialog = false
                     radiusSource = null
@@ -457,6 +505,46 @@ fun SilentScreen(
                     showRadiusDialog = false
                     radiusSource = null
                 }
+            )
+        }
+
+        if (editingLocationRadiusZone != null) {
+            val zone = editingLocationRadiusZone!!
+            RadiusSelectionBottomSheet(
+                initialRadius = zone.radius,
+                onRadiusSelected = { radius ->
+                    onUpdateLocationZone(zone.copy(radius = radius))
+                    editingLocationRadiusZone = null
+                },
+                onDismiss = { editingLocationRadiusZone = null }
+            )
+        }
+
+        if (pendingCurrentLocationRadius != null) {
+            val radius = pendingCurrentLocationRadius!!
+            ModeSelectionBottomSheet(
+                targetName = "Current Location",
+                onModeSelected = { selectedMode ->
+                    requestSilentPermissionOrRun(selectedMode) {
+                        onAddLocationZone(selectedMode, radius)
+                        pendingCurrentLocationRadius = null
+                    }
+                },
+                onDismiss = { pendingCurrentLocationRadius = null }
+            )
+        }
+
+        if (pendingMapZones != null) {
+            val zones = pendingMapZones!!
+            ModeSelectionBottomSheet(
+                targetName = if (zones.size == 1) zones.first().name else "${zones.size} Locations",
+                onModeSelected = { selectedMode ->
+                    requestSilentPermissionOrRun(selectedMode) {
+                        onMapZonesSelected(zones, selectedMode)
+                        pendingMapZones = null
+                    }
+                },
+                onDismiss = { pendingMapZones = null }
             )
         }
 
@@ -476,12 +564,43 @@ fun SilentScreen(
 
         if (pendingSsid != null) {
             ModeSelectionBottomSheet(
-                ssid = pendingSsid!!,
+                targetName = pendingSsid!!,
                 onModeSelected = { m ->
-                    onSelectedSsid(pendingSsid!!, m)
-                    pendingSsid = null
+                    val ssid = pendingSsid!!
+                    requestSilentPermissionOrRun(m) {
+                        onSelectedSsid(ssid, m)
+                        pendingSsid = null
+                    }
                 },
                 onDismiss = { pendingSsid = null }
+            )
+        }
+
+        if (editingWifiSsid != null) {
+            ModeSelectionBottomSheet(
+                targetName = editingWifiSsid!!,
+                onModeSelected = { mode ->
+                    val ssid = editingWifiSsid!!
+                    requestSilentPermissionOrRun(mode) {
+                        onUpdateWifiZoneMode(ssid, mode)
+                        editingWifiSsid = null
+                    }
+                },
+                onDismiss = { editingWifiSsid = null }
+            )
+        }
+
+        if (editingLocationModeZone != null) {
+            val zone = editingLocationModeZone!!
+            ModeSelectionBottomSheet(
+                targetName = zone.name,
+                onModeSelected = { selectedMode ->
+                    requestSilentPermissionOrRun(selectedMode) {
+                        onUpdateLocationZone(zone.copy(mode = selectedMode))
+                        editingLocationModeZone = null
+                    }
+                },
+                onDismiss = { editingLocationModeZone = null }
             )
         }
 
@@ -496,6 +615,16 @@ fun SilentScreen(
             ActivityHistoryBottomSheet(
                 events = recentAnalytics,
                 onDismiss = { showActivityHistory = false }
+            )
+        }
+
+        if (showDndPermissionDialog) {
+            DndPermissionRequiredDialog(
+                onCancel = { showDndPermissionDialog = false },
+                onProceed = {
+                    showDndPermissionDialog = false
+                    onGrantAccess()
+                }
             )
         }
     }
@@ -725,9 +854,43 @@ fun ZonesScreen(
     vibrateSsids: Set<String>,
     normalSsids: Set<String>,
     locationZones: List<LocationZone>,
+    isLocationAutomationPaused: Boolean,
+    isWifiAutomationPaused: Boolean,
     onDeleteSsid: (String) -> Unit,
-    onDeleteLocationZone: (String) -> Unit
+    onDeleteLocationZone: (String) -> Unit,
+    onEditLocationMode: (LocationZone) -> Unit,
+    onEditLocationRadius: (LocationZone) -> Unit,
+    onEditWifiMode: (String) -> Unit,
+    onAddLocationFromEmpty: () -> Unit,
+    onAddWifiFromEmpty: () -> Unit
 ) {
+    var pendingLocationDelete by remember { mutableStateOf<LocationZone?>(null) }
+    var pendingWifiDelete by remember { mutableStateOf<String?>(null) }
+
+    pendingLocationDelete?.let { zone ->
+        ConfirmDeleteZoneDialog(
+            message =
+                "Delete \"${zone.name}\"? This zone will no longer change your phone mode automatically.",
+            onCancel = { pendingLocationDelete = null },
+            onDelete = {
+                onDeleteLocationZone(zone.id)
+                pendingLocationDelete = null
+            }
+        )
+    }
+
+    pendingWifiDelete?.let { ssid ->
+        ConfirmDeleteZoneDialog(
+            message =
+                "Delete \"$ssid\"? This Wi-Fi network will no longer change your phone mode automatically.",
+            onCancel = { pendingWifiDelete = null },
+            onDelete = {
+                onDeleteSsid(ssid)
+                pendingWifiDelete = null
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -739,31 +902,48 @@ fun ZonesScreen(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         // Section 1: Geofence Areas
-        item { DashboardSectionHeader("Geofence Areas") }
+        item { DashboardSectionHeader("Location Areas") }
+        if (isLocationAutomationPaused) {
+            item {
+                SectionPauseMessage("Paused: Background location permission required")
+            }
+        }
         if (locationZones.isEmpty()) {
             item {
                 MiniEmptyState(
                     icon = Icons.Default.LocationOn,
                     title = "No Locations Added",
-                    subtitle = "Tap the + button to create your first geofence.",
-                    color = MaterialTheme.colorScheme.primary
+                    subtitle = "Tap here to create your first geofence.",
+                    color = MaterialTheme.colorScheme.primary,
+                    onClick = onAddLocationFromEmpty
                 )
             }
         } else {
             items(locationZones) { zone ->
-                LocationZoneItemCard(zone = zone, onDelete = { onDeleteLocationZone(zone.id) })
+                LocationZoneItemCard(
+                    zone = zone,
+                    onDelete = { pendingLocationDelete = zone },
+                    onEditMode = { onEditLocationMode(zone) },
+                    onEditRadius = { onEditLocationRadius(zone) }
+                )
             }
         }
 
         // Section 2: Wi-Fi Networks
         item { DashboardSectionHeader("Wi-Fi Networks") }
+        if (isWifiAutomationPaused) {
+            item {
+                SectionPauseMessage("Paused: Location/Nearby Wi-Fi permission required")
+            }
+        }
         if (silentSsids.isEmpty() && vibrateSsids.isEmpty() && normalSsids.isEmpty()) {
             item {
                 MiniEmptyState(
                     icon = Icons.Default.Wifi,
                     title = "No Wi-Fi Zones",
-                    subtitle = "Tap the + button to create your first Wi-Fi.",
-                    color = MaterialTheme.colorScheme.secondary
+                    subtitle = "Tap here to choose a Wi-Fi network.",
+                    color = MaterialTheme.colorScheme.secondary,
+                    onClick = onAddWifiFromEmpty
                 )
             }
         } else {
@@ -771,23 +951,100 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.SILENT,
-                    onDelete = { onDeleteSsid(ssid) }
+                    onDelete = { pendingWifiDelete = ssid },
+                    onEditMode = { onEditWifiMode(ssid) }
                 )
             }
             items(vibrateSsids.toList()) { ssid ->
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.VIBRATE,
-                    onDelete = { onDeleteSsid(ssid) }
+                    onDelete = { pendingWifiDelete = ssid },
+                    onEditMode = { onEditWifiMode(ssid) }
                 )
             }
             items(normalSsids.toList()) { ssid ->
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.NORMAL,
-                    onDelete = { onDeleteSsid(ssid) }
+                    onDelete = { pendingWifiDelete = ssid },
+                    onEditMode = { onEditWifiMode(ssid) }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun ConfirmDeleteZoneDialog(
+    message: String,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(
+                "Delete zone?",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                message,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onCancel) {
+                Text("Cancel")
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDelete,
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+            ) {
+                Text("Delete", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
+}
+
+@Composable
+private fun SectionPauseMessage(text: String) {
+    GlassCard(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.GppMaybe,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
