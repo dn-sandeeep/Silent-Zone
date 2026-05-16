@@ -864,6 +864,33 @@ fun ZonesScreen(
     onAddLocationFromEmpty: () -> Unit,
     onAddWifiFromEmpty: () -> Unit
 ) {
+    var pendingLocationDelete by remember { mutableStateOf<LocationZone?>(null) }
+    var pendingWifiDelete by remember { mutableStateOf<String?>(null) }
+
+    pendingLocationDelete?.let { zone ->
+        ConfirmDeleteZoneDialog(
+            message =
+                "Delete \"${zone.name}\"? This zone will no longer change your phone mode automatically.",
+            onCancel = { pendingLocationDelete = null },
+            onDelete = {
+                onDeleteLocationZone(zone.id)
+                pendingLocationDelete = null
+            }
+        )
+    }
+
+    pendingWifiDelete?.let { ssid ->
+        ConfirmDeleteZoneDialog(
+            message =
+                "Delete \"$ssid\"? This Wi-Fi network will no longer change your phone mode automatically.",
+            onCancel = { pendingWifiDelete = null },
+            onDelete = {
+                onDeleteSsid(ssid)
+                pendingWifiDelete = null
+            }
+        )
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -895,7 +922,7 @@ fun ZonesScreen(
             items(locationZones) { zone ->
                 LocationZoneItemCard(
                     zone = zone,
-                    onDelete = { onDeleteLocationZone(zone.id) },
+                    onDelete = { pendingLocationDelete = zone },
                     onEditMode = { onEditLocationMode(zone) },
                     onEditRadius = { onEditLocationRadius(zone) }
                 )
@@ -924,7 +951,7 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.SILENT,
-                    onDelete = { onDeleteSsid(ssid) },
+                    onDelete = { pendingWifiDelete = ssid },
                     onEditMode = { onEditWifiMode(ssid) }
                 )
             }
@@ -932,7 +959,7 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.VIBRATE,
-                    onDelete = { onDeleteSsid(ssid) },
+                    onDelete = { pendingWifiDelete = ssid },
                     onEditMode = { onEditWifiMode(ssid) }
                 )
             }
@@ -940,12 +967,53 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.NORMAL,
-                    onDelete = { onDeleteSsid(ssid) },
+                    onDelete = { pendingWifiDelete = ssid },
                     onEditMode = { onEditWifiMode(ssid) }
                 )
             }
         }
     }
+}
+
+@Composable
+private fun ConfirmDeleteZoneDialog(
+    message: String,
+    onCancel: () -> Unit,
+    onDelete: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(
+                "Delete zone?",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                message,
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onCancel) {
+                Text("Cancel")
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onDelete,
+                colors =
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
+            ) {
+                Text("Delete", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }
 
 @Composable
