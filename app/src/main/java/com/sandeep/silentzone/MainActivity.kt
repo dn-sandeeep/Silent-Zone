@@ -174,7 +174,9 @@ class MainActivity : ComponentActivity() {
                                 onLogClickCreateZone = { vm.logClickCreateZone() },
                                 onCompleteUpdate = { appUpdateHelper.completeUpdate() },
                                 updateReadyToInstall = vm.updateReadyToInstall.collectAsStateWithLifecycle().value,
+                                hasForegroundLocation = state.hasForegroundLocation,
                                 hasBackgroundLocation = state.hasBackgroundLocation,
+                                hasWifiAutomationPermission = state.hasWifiAutomationPermission,
                                 isIgnoringBatteryOptimizations =
                                         state.isIgnoringBatteryOptimizations,
                                 zoneCount = wifiZones.size + locationZones.size,
@@ -319,6 +321,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         vm.refresh()
+        vm.refreshAutomationPermissionHealth(getCurrentSsid())
         appUpdateHelper.checkPendingUpdate()
     }
 

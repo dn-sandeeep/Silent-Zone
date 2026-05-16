@@ -31,6 +31,10 @@ class SilentModeViewModel @Inject constructor(
     val operationState: StateFlow<OperationState> = _operationState.asStateFlow()
 
     private val _isFallback = MutableStateFlow(false)
+    private val _permissionRefreshTick = MutableStateFlow(0)
+    private var lastForegroundLocationGranted: Boolean? = null
+    private var lastBackgroundLocationGranted: Boolean? = null
+    private var lastWifiAutomationPermissionGranted: Boolean? = null
 
     private val _availableSsidList = MutableStateFlow<List<String>>(emptyList())
     val availableSsidList: StateFlow<List<String>> = _availableSsidList.asStateFlow()
@@ -68,22 +72,57 @@ class SilentModeViewModel @Inject constructor(
         repo.currentModeFlow,
         _message,
         _isFallback,
-        repo.getBatteryUsageFlow()
-    ) { mode, msg, fallback, battery ->
+        repo.getBatteryUsageFlow(),
+        _permissionRefreshTick
+    ) { mode, msg, fallback, battery, _ ->
         UiState(
             accessGranted = repo.hasPolicyAccess(),
             currentMode = mode,
             isFallback = fallback && !repo.hasPolicyAccess(),
             message = msg,
+            hasForegroundLocation = hasForegroundLocationPermission(),
             hasBackgroundLocation = hasBackgroundLocationPermission(),
+            hasWifiAutomationPermission = hasWifiAutomationPermission(),
             isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations(),
             batteryUsage = battery
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), UiState(repo.hasPolicyAccess(), repo.getCurrentMode(), false, null, true, true))
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        UiState(
+            accessGranted = repo.hasPolicyAccess(),
+            currentMode = repo.getCurrentMode(),
+            isFallback = false,
+            message = null,
+            hasForegroundLocation = hasForegroundLocationPermission(),
+            hasBackgroundLocation = hasBackgroundLocationPermission(),
+            hasWifiAutomationPermission = hasWifiAutomationPermission(),
+            isIgnoringBatteryOptimizations = isIgnoringBatteryOptimizations()
+        )
+    )
+
+    private fun hasForegroundLocationPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            appContext,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
 
     private fun hasBackgroundLocationPermission(): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             ContextCompat.checkSelfPermission(appContext, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+    }
+
+    private fun hasWifiAutomationPermission(): Boolean {
+        if (!hasForegroundLocationPermission()) return false
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                appContext,
+                android.Manifest.permission.NEARBY_WIFI_DEVICES
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
         } else {
             true
         }
@@ -169,6 +208,43 @@ class SilentModeViewModel @Inject constructor(
     fun removeWifiZone(ssid: String) {
         launchOperation("WiFi Zone Removed") {
             repo.removeWifiZone(ssid)
+        }
+    }
+
+    fun refreshAutomationPermissionHealth(currentSsid: String?) {
+        val foregroundGranted = hasForegroundLocationPermission()
+        val backgroundGranted = hasBackgroundLocationPermission()
+        val wifiGranted = hasWifiAutomationPermission()
+        val previousForeground = lastForegroundLocationGranted
+        val previousBackground = lastBackgroundLocationGranted
+        val previousWifi = lastWifiAutomationPermissionGranted
+
+        lastForegroundLocationGranted = foregroundGranted
+        lastBackgroundLocationGranted = backgroundGranted
+        lastWifiAutomationPermissionGranted = wifiGranted
+        _permissionRefreshTick.value += 1
+
+        viewModelScope.launch {
+            if (!foregroundGranted || !backgroundGranted) {
+                repo.pauseLocationAutomation()
+            }
+            if (!wifiGranted) {
+                repo.pauseWifiAutomation()
+            }
+
+            val locationRestored =
+                previousForeground != null &&
+                    previousBackground != null &&
+                    (!previousForeground || !previousBackground) &&
+                    foregroundGranted &&
+                    backgroundGranted
+            val wifiRestored = previousWifi != null && !previousWifi && wifiGranted
+
+            if (locationRestored) {
+                repo.resumeAutomation(if (wifiGranted) currentSsid else null)
+            } else if (wifiRestored) {
+                repo.onWifiChanged(currentSsid)
+            }
         }
     }
 

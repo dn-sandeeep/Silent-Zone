@@ -1074,6 +1074,7 @@ fun SsidSelectionBottomSheet(
 fun ZoneItemCard(
     ssid: String,
     mode: RingerMode,
+    pausedMessage: String? = null,
     onDelete: () -> Unit,
     onEditMode: () -> Unit = {}
 ) {
@@ -1126,6 +1127,14 @@ fun ZoneItemCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = color.copy(alpha = 0.7f)
                     )
+                    if (pausedMessage != null) {
+                        Text(
+                            text = pausedMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1445,6 +1454,7 @@ private fun AddTypeMenuItem(
 @Composable
 fun LocationZoneItemCard(
     zone: LocationZone,
+    pausedMessage: String? = null,
     onDelete: () -> Unit,
     onEditMode: () -> Unit = {},
     onEditRadius: () -> Unit = {}
@@ -1500,6 +1510,14 @@ fun LocationZoneItemCard(
                             text = " • ${zone.radius.toInt()}m range",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                        )
+                    }
+                    if (pausedMessage != null) {
+                        Text(
+                            text = pausedMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 }

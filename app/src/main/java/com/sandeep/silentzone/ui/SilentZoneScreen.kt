@@ -128,7 +128,9 @@ fun SilentScreen(
     onLogClickCreateZone: () -> Unit = {},
     onCompleteUpdate: () -> Unit = {},
     updateReadyToInstall: Boolean = false,
+    hasForegroundLocation: Boolean,
     hasBackgroundLocation: Boolean,
+    hasWifiAutomationPermission: Boolean,
     isIgnoringBatteryOptimizations: Boolean,
     zoneCount: Int = 0,
     contactCount: Int = 0,
@@ -420,6 +422,9 @@ fun SilentScreen(
                                 vibrateSsids = vibrateSsids,
                                 normalSsids = normalSsids,
                                 locationZones = locationZones,
+                                isLocationAutomationPaused =
+                                    !hasForegroundLocation || !hasBackgroundLocation,
+                                isWifiAutomationPaused = !hasWifiAutomationPermission,
                                 onDeleteSsid = onDeleteSsid,
                                 onDeleteLocationZone = onDeleteLocationZone,
                                 onEditLocationMode = { zone -> editingLocationModeZone = zone },
@@ -849,6 +854,8 @@ fun ZonesScreen(
     vibrateSsids: Set<String>,
     normalSsids: Set<String>,
     locationZones: List<LocationZone>,
+    isLocationAutomationPaused: Boolean,
+    isWifiAutomationPaused: Boolean,
     onDeleteSsid: (String) -> Unit,
     onDeleteLocationZone: (String) -> Unit,
     onEditLocationMode: (LocationZone) -> Unit,
@@ -883,6 +890,10 @@ fun ZonesScreen(
             items(locationZones) { zone ->
                 LocationZoneItemCard(
                     zone = zone,
+                    pausedMessage =
+                        if (isLocationAutomationPaused)
+                            "Paused: Background location permission required"
+                        else null,
                     onDelete = { onDeleteLocationZone(zone.id) },
                     onEditMode = { onEditLocationMode(zone) },
                     onEditRadius = { onEditLocationRadius(zone) }
@@ -907,6 +918,10 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.SILENT,
+                    pausedMessage =
+                        if (isWifiAutomationPaused)
+                            "Paused: Location/Nearby Wi-Fi permission required"
+                        else null,
                     onDelete = { onDeleteSsid(ssid) },
                     onEditMode = { onEditWifiMode(ssid) }
                 )
@@ -915,6 +930,10 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.VIBRATE,
+                    pausedMessage =
+                        if (isWifiAutomationPaused)
+                            "Paused: Location/Nearby Wi-Fi permission required"
+                        else null,
                     onDelete = { onDeleteSsid(ssid) },
                     onEditMode = { onEditWifiMode(ssid) }
                 )
@@ -923,6 +942,10 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.NORMAL,
+                    pausedMessage =
+                        if (isWifiAutomationPaused)
+                            "Paused: Location/Nearby Wi-Fi permission required"
+                        else null,
                     onDelete = { onDeleteSsid(ssid) },
                     onEditMode = { onEditWifiMode(ssid) }
                 )

@@ -172,6 +172,10 @@ constructor(
         prefs.edit().putStringSet(PREF_KEY_ACTIVE_PROXY_SET, current).apply()
     }
 
+    private fun clearProxySet() {
+        prefs.edit().putStringSet(PREF_KEY_ACTIVE_PROXY_SET, emptySet()).apply()
+    }
+
     private fun registerWifiCallback() {
         val connectivityManager =
                 appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -612,6 +616,22 @@ constructor(
         }
     }
 
+    suspend fun pauseLocationAutomation() {
+        val activeLocationSet = getActiveLocationSet()
+        val activeProxySet = getActiveProxySet()
+        if (activeLocationSet.isNotEmpty()) {
+            activeLocationSet.forEach { id ->
+                val zone = dao.getLocationZoneById(id)?.toDomain()
+                removeFromLocationSet(id)
+                if (zone != null) logExit(zone.name)
+            }
+        }
+        clearProxySet()
+        if (activeLocationSet.isNotEmpty() || activeProxySet.isNotEmpty()) {
+            checkAndRestore()
+        }
+    }
+
     suspend fun updateWifiZoneMode(ssid: String, mode: RingerMode) {
         val existing = dao.getWifiZoneBySsid(ssid)?.toDomain() ?: WifiZone(ssid, mode)
         dao.insertWifiZone(existing.copy(mode = mode).toEntity())
@@ -628,6 +648,22 @@ constructor(
             logExit(ssid)
             checkAndRestore()
         }
+    }
+
+    suspend fun pauseWifiAutomation() {
+        val activeWifiSet = getActiveWifiSet()
+        if (activeWifiSet.isNotEmpty()) {
+            activeWifiSet.forEach { ssid ->
+                removeFromWifiSet(ssid)
+                logExit(ssid)
+            }
+            checkAndRestore()
+        }
+    }
+
+    suspend fun resumeAutomation(currentSsid: String?) {
+        reRegisterAllTriggers()
+        syncCurrentState(currentSsid)
     }
 
     // Important Contact Management
