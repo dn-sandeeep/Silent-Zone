@@ -876,6 +876,11 @@ fun ZonesScreen(
     ) {
         // Section 1: Geofence Areas
         item { DashboardSectionHeader("Geofence Areas") }
+        if (isLocationAutomationPaused) {
+            item {
+                SectionPauseMessage("Paused: Background location permission required")
+            }
+        }
         if (locationZones.isEmpty()) {
             item {
                 MiniEmptyState(
@@ -890,10 +895,6 @@ fun ZonesScreen(
             items(locationZones) { zone ->
                 LocationZoneItemCard(
                     zone = zone,
-                    pausedMessage =
-                        if (isLocationAutomationPaused)
-                            "Paused: Background location permission required"
-                        else null,
                     onDelete = { onDeleteLocationZone(zone.id) },
                     onEditMode = { onEditLocationMode(zone) },
                     onEditRadius = { onEditLocationRadius(zone) }
@@ -903,6 +904,11 @@ fun ZonesScreen(
 
         // Section 2: Wi-Fi Networks
         item { DashboardSectionHeader("Wi-Fi Networks") }
+        if (isWifiAutomationPaused) {
+            item {
+                SectionPauseMessage("Paused: Location/Nearby Wi-Fi permission required")
+            }
+        }
         if (silentSsids.isEmpty() && vibrateSsids.isEmpty() && normalSsids.isEmpty()) {
             item {
                 MiniEmptyState(
@@ -918,10 +924,6 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.SILENT,
-                    pausedMessage =
-                        if (isWifiAutomationPaused)
-                            "Paused: Location/Nearby Wi-Fi permission required"
-                        else null,
                     onDelete = { onDeleteSsid(ssid) },
                     onEditMode = { onEditWifiMode(ssid) }
                 )
@@ -930,10 +932,6 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.VIBRATE,
-                    pausedMessage =
-                        if (isWifiAutomationPaused)
-                            "Paused: Location/Nearby Wi-Fi permission required"
-                        else null,
                     onDelete = { onDeleteSsid(ssid) },
                     onEditMode = { onEditWifiMode(ssid) }
                 )
@@ -942,14 +940,43 @@ fun ZonesScreen(
                 ZoneItemCard(
                     ssid = ssid,
                     mode = RingerMode.NORMAL,
-                    pausedMessage =
-                        if (isWifiAutomationPaused)
-                            "Paused: Location/Nearby Wi-Fi permission required"
-                        else null,
                     onDelete = { onDeleteSsid(ssid) },
                     onEditMode = { onEditWifiMode(ssid) }
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionPauseMessage(text: String) {
+    GlassCard(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.GppMaybe,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }
