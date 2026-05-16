@@ -149,6 +149,10 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onDeleteLocationZone = { id -> vm.removeLocationZone(id) },
+                                onUpdateLocationZone = { zone -> vm.updateLocationZone(zone) },
+                                onUpdateWifiZoneMode = { ssid, mode ->
+                                    vm.updateWifiZoneMode(ssid, mode)
+                                },
                                 initialUserLocation = currentLocation,
                                 importantContacts = importantContacts,
                                 onPickContact = { handleAddImportantContact() },

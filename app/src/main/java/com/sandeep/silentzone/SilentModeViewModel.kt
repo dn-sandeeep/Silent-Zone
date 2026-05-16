@@ -172,6 +172,12 @@ class SilentModeViewModel @Inject constructor(
         }
     }
 
+    fun updateWifiZoneMode(ssid: String, mode: RingerMode) {
+        launchOperation("WiFi Zone Updated") {
+            repo.updateWifiZoneMode(ssid, mode)
+        }
+    }
+
     val locationZones: StateFlow<List<LocationZone>> = repo.getLocationZonesFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -238,6 +244,12 @@ class SilentModeViewModel @Inject constructor(
     fun removeLocationZone(id: String) {
         launchOperation("Location Zone Removed") {
             repo.removeLocationZone(id)
+        }
+    }
+
+    fun updateLocationZone(zone: LocationZone) {
+        launchOperation("Location Zone Updated") {
+            repo.updateLocationZone(zone)
         }
     }
 

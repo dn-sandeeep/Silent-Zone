@@ -575,6 +575,14 @@ constructor(
         geofenceManager.addGeofence(zone.id, zone.latitude, zone.longitude, zone.radius)
     }
 
+    suspend fun updateLocationZone(zone: LocationZone) {
+        dao.insertLocationZone(zone.toEntity())
+        geofenceManager.addGeofence(zone.id, zone.latitude, zone.longitude, zone.radius)
+        if (getActiveLocationSet().contains(zone.id)) {
+            checkAndRestore()
+        }
+    }
+
     suspend fun removeLocationZone(id: String) {
         val zone = dao.getLocationZoneById(id)?.toDomain()
         dao.deleteLocationZoneById(id)
@@ -601,6 +609,14 @@ constructor(
                     longitude = wifiZone.longitude,
                     radius = 100f
             )
+        }
+    }
+
+    suspend fun updateWifiZoneMode(ssid: String, mode: RingerMode) {
+        val existing = dao.getWifiZoneBySsid(ssid)?.toDomain() ?: WifiZone(ssid, mode)
+        dao.insertWifiZone(existing.copy(mode = mode).toEntity())
+        if (getActiveWifiSet().contains(ssid)) {
+            checkAndRestore()
         }
     }
 

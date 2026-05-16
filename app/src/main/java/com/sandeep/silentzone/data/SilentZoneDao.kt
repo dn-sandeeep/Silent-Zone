@@ -32,6 +32,9 @@ interface SilentZoneDao {
     @Query("SELECT * FROM wifi_zones")
     fun getAllWifiZones(): Flow<List<WifiZoneEntity>>
 
+    @Query("SELECT * FROM wifi_zones WHERE ssid = :ssid")
+    suspend fun getWifiZoneBySsid(ssid: String): WifiZoneEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWifiZone(zone: WifiZoneEntity)
 

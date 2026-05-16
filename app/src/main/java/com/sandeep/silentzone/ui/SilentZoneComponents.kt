@@ -96,6 +96,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.DoNotDisturbOn
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Timer
@@ -1070,7 +1071,12 @@ fun SsidSelectionBottomSheet(
 
 
 @Composable
-fun ZoneItemCard(ssid: String, mode: RingerMode, onDelete: () -> Unit) {
+fun ZoneItemCard(
+    ssid: String,
+    mode: RingerMode,
+    onDelete: () -> Unit,
+    onEditMode: () -> Unit = {}
+) {
     val icon = when (mode) {
         RingerMode.SILENT -> Icons.Default.NotificationsOff
         RingerMode.VIBRATE -> Icons.Default.Vibration
@@ -1122,13 +1128,23 @@ fun ZoneItemCard(ssid: String, mode: RingerMode, onDelete: () -> Unit) {
                     )
                 }
             }
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
-            ) {
-                Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(
+                    onClick = onEditMode,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(color.copy(alpha = 0.1f))
+                ) {
+                    Icon(Icons.Default.Edit, null, tint = color)
+                }
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
+                ) {
+                    Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
@@ -1137,7 +1153,7 @@ fun ZoneItemCard(ssid: String, mode: RingerMode, onDelete: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModeSelectionBottomSheet(
-    ssid: String,
+    targetName: String,
     onModeSelected: (RingerMode) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -1159,7 +1175,7 @@ fun ModeSelectionBottomSheet(
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-                "Switch mode when connected to $ssid",
+                "Switch mode for $targetName",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
             )
@@ -1211,10 +1227,11 @@ fun ModeSelectionBottomSheet(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RadiusSelectionBottomSheet(
+    initialRadius: Float = 100f,
     onRadiusSelected: (Float) -> Unit,
     onDismiss: () -> Unit
 ) {
-    var radius by remember { mutableFloatStateOf(100f) }
+    var radius by remember { mutableFloatStateOf(initialRadius) }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -1334,6 +1351,59 @@ fun AddZoneTypeBottomSheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun LocationAddOptionsBottomSheet(
+    onCurrentLocation: () -> Unit,
+    onSelectMap: () -> Unit,
+    onDismiss: () -> Unit,
+    onRequestPermission: (() -> Unit) -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        dragHandle = { BottomSheetDefaults.DragHandle() }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 48.dp)
+        ) {
+            Text(
+                "Add Location Zone",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                "Choose how to create the geofence",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                AddTypeMenuItem(
+                    title = "Current Location",
+                    subtitle = "Create a geofence around here",
+                    icon = Icons.Default.MyLocation,
+                    color = MaterialTheme.colorScheme.primary,
+                    onClick = { onRequestPermission { onCurrentLocation() } }
+                )
+                AddTypeMenuItem(
+                    title = "Pick on Map",
+                    subtitle = "Search or select any globally",
+                    icon = Icons.Default.Map,
+                    color = MaterialTheme.colorScheme.secondary,
+                    onClick = { onRequestPermission { onSelectMap() } }
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun AddTypeMenuItem(
     title: String,
@@ -1373,7 +1443,12 @@ private fun AddTypeMenuItem(
 }
 
 @Composable
-fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
+fun LocationZoneItemCard(
+    zone: LocationZone,
+    onDelete: () -> Unit,
+    onEditMode: () -> Unit = {},
+    onEditRadius: () -> Unit = {}
+) {
     val icon = when (zone.mode) {
         RingerMode.SILENT -> Icons.Default.NotificationsOff
         RingerMode.VIBRATE -> Icons.Default.Vibration
@@ -1429,13 +1504,31 @@ fun LocationZoneItemCard(zone: LocationZone, onDelete: () -> Unit) {
                     }
                 }
             }
-            IconButton(
-                onClick = onDelete,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
-            ) {
-                Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                IconButton(
+                    onClick = onEditRadius,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                ) {
+                    Icon(Icons.Default.Map, null, tint = MaterialTheme.colorScheme.primary)
+                }
+                IconButton(
+                    onClick = onEditMode,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(color.copy(alpha = 0.1f))
+                ) {
+                    Icon(Icons.Default.Edit, null, tint = color)
+                }
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.error.copy(alpha = 0.1f))
+                ) {
+                    Icon(Icons.Default.DeleteOutline, null, tint = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
@@ -1523,9 +1616,19 @@ fun MiniEmptyState(
     icon: ImageVector,
     title: String,
     subtitle: String,
-    color: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+    color: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+    onClick: (() -> Unit)? = null
 ) {
-    GlassCard(modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)) {
+    val cardModifier = if (onClick != null) {
+        Modifier
+            .padding(horizontal = 4.dp, vertical = 4.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .clickable { onClick() }
+    } else {
+        Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+    }
+
+    GlassCard(modifier = cardModifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1547,6 +1650,39 @@ fun MiniEmptyState(
             }
         }
     }
+}
+
+@Composable
+fun DndPermissionRequiredDialog(
+    onCancel: () -> Unit,
+    onProceed: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        title = {
+            Text(
+                "DND Permission Required",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                "Silent mode ke liye Do Not Disturb permission bahot jaruri hai. Permission ke bina app phone ko Silent mode me switch nahi kar sakta.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        dismissButton = {
+            TextButton(onClick = onCancel) {
+                Text("Cancel")
+            }
+        },
+        confirmButton = {
+            Button(onClick = onProceed) {
+                Text("Proceed", fontWeight = FontWeight.Bold)
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
