@@ -1496,12 +1496,12 @@ fun LocationZoneItemCard(
                             color = color,
                             fontWeight = FontWeight.Bold
                         )
-                        Text(
-                            text = " • ${zone.radius.toInt()}m range",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
-                        )
                     }
+                    Text(
+                        text = "Radius ${zone.radius.toInt()}m",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                    )
                 }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

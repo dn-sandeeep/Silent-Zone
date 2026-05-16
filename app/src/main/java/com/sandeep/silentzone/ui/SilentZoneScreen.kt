@@ -875,7 +875,7 @@ fun ZonesScreen(
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         // Section 1: Geofence Areas
-        item { DashboardSectionHeader("Geofence Areas") }
+        item { DashboardSectionHeader("Location Areas") }
         if (isLocationAutomationPaused) {
             item {
                 SectionPauseMessage("Paused: Background location permission required")
