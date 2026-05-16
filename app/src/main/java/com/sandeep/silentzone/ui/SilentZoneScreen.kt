@@ -427,8 +427,10 @@ fun SilentScreen(
                                 onEditWifiMode = { ssid -> editingWifiSsid = ssid },
                                 onAddLocationFromEmpty = { showLocationAddOptions = true },
                                 onAddWifiFromEmpty = {
-                                    addZone()
-                                    showWifiSelection = true
+                                    onRequestPermission {
+                                        addZone()
+                                        showWifiSelection = true
+                                    }
                                 }
                             )
 

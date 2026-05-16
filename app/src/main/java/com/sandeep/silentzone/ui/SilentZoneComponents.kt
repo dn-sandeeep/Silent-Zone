@@ -1668,7 +1668,7 @@ fun DndPermissionRequiredDialog(
         },
         text = {
             Text(
-                "Silent mode ke liye Do Not Disturb permission bahot jaruri hai. Permission ke bina app phone ko Silent mode me switch nahi kar sakta.",
+                "Do Not Disturb permission is required to use Silent mode. Without this permission, SilentZone cannot switch your phone to Silent mode.",
                 style = MaterialTheme.typography.bodyMedium
             )
         },
