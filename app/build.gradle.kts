@@ -115,8 +115,6 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.hilt.work)
     implementation(libs.play.app.update.ktx)
-    implementation(libs.google.material)
-
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
