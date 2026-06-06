@@ -2,7 +2,6 @@ package com.sandeep.silentzone.utils
 
 import android.app.Activity
 import android.util.Log
-import com.google.android.material.snackbar.Snackbar
 import com.google.android.play.core.appupdate.AppUpdateManager
 import com.google.android.play.core.appupdate.AppUpdateManagerFactory
 import com.google.android.play.core.appupdate.AppUpdateOptions

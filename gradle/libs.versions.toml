@@ -29,7 +29,6 @@ firebase-crashlytics-gradle = "3.0.2"
 runtime = "1.10.6"
 play-app-update = "2.1.0"
 material3 = "1.4.0"
-material = "1.12.0"
 runtimeVersion = "1.11.0"
 
 
@@ -75,7 +74,6 @@ hilt-ext-compiler = { group = "androidx.hilt", name = "hilt-compiler", version =
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtime" }
 play-app-update-ktx = { group = "com.google.android.play", name = "app-update-ktx", version.ref = "play-app-update" }
 androidx-compose-material3 = { group = "androidx.compose.material3", name = "material3", version.ref = "material3" }
-google-material = { group = "com.google.android.material", name = "material", version.ref = "material" }
 androidx-runtime = { group = "androidx.compose.runtime", name = "runtime", version.ref = "runtimeVersion" }
 firebase-perf = { group = "com.google.firebase", name = "firebase-perf" }
 

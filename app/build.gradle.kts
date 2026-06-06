@@ -19,8 +19,8 @@ android {
         applicationId = "com.sandeep.silentzone"
         minSdk = 24
         targetSdk = 36
-        versionCode = 15
-        versionName = "0.1.2"
+        versionCode = 16
+        versionName = "0.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -115,8 +115,6 @@ dependencies {
     implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.hilt.work)
     implementation(libs.play.app.update.ktx)
-    implementation(libs.google.material)
-
     // Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
