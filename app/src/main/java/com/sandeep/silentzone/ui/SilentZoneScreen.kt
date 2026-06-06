@@ -18,8 +18,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -33,20 +31,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Battery5Bar
-import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.DoNotDisturbOn
-import androidx.compose.material.icons.filled.Feedback
 import androidx.compose.material.icons.filled.GppMaybe
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.QuestionAnswer
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarOutline
@@ -62,8 +55,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -142,6 +133,7 @@ fun SilentScreen(
         com.sandeep.silentzone.BatteryUsage(0.0, 0.0, 0.0, 0.0)
 ) {
     var selectedScreen by remember { mutableIntStateOf(0) }
+    val context = LocalContext.current
 
     LaunchedEffect(selectedScreen) {
         if (selectedScreen == 1) {
@@ -212,7 +204,6 @@ fun SilentScreen(
                                     0 -> "Home"
                                     1 -> "Zones"
                                     2 -> "Contacts"
-                                    3 -> "Feedback"
                                     else -> "SilentZone"
                                 },
                             style =
@@ -238,7 +229,6 @@ fun SilentScreen(
                                 MaterialTheme.colorScheme.onBackground
                         ),
                     actions = {
-                        val context = LocalContext.current
                         IconButton(onClick = { FeedbackUtils.shareApp(context) }) {
                             Icon(
                                 imageVector = Icons.Default.Share,
@@ -329,10 +319,10 @@ fun SilentScreen(
                                 )
                         )
                         NavigationBarItem(
-                            selected = selectedScreen == 3,
-                            onClick = { selectedScreen = 3 },
-                            icon = { Icon(Icons.Default.Feedback, null) },
-                            label = { Text("Feedback", fontWeight = FontWeight.Bold) },
+                            selected = false,
+                            onClick = { FeedbackUtils.rateApp(context) },
+                            icon = { Icon(Icons.Default.Star, null) },
+                            label = { Text("Rate Us", fontWeight = FontWeight.Bold) },
                             colors =
                                 NavigationBarItemDefaults.colors(
                                     selectedIconColor =
@@ -445,8 +435,6 @@ fun SilentScreen(
                                 contacts = importantContacts,
                                 onDeleteContact = onDeleteContact
                             )
-
-                        3 -> FeedbackScreen(contentPadding = innerPadding)
                     }
                 }
                 // Operation status feedback (Top Layer)
@@ -1303,124 +1291,4 @@ fun StatusCard(
 
 sealed class RadiusSource {
     object CurrentLocation : RadiusSource()
-}
-
-@Composable
-fun FeedbackScreen(contentPadding: PaddingValues) {
-    var rating by remember { mutableIntStateOf(5) }
-    var selectedCategory by remember { mutableStateOf("General") }
-    var message by remember { mutableStateOf("") }
-    val context = LocalContext.current
-
-    val categories =
-        listOf(
-            "General" to Icons.Default.Feedback,
-            "Bug" to Icons.Default.BugReport,
-            "Feature" to Icons.Default.Lightbulb,
-            "Support" to Icons.Default.QuestionAnswer
-        )
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        Spacer(modifier = Modifier.height(contentPadding.calculateTopPadding() + 8.dp))
-
-        // Header Illustration/Icon
-        Box(
-            modifier =
-                Modifier
-                    .size(120.dp)
-                    .background(
-                        MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f),
-                        CircleShape
-                    ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                Icons.Default.Feedback,
-                contentDescription = null,
-                modifier = Modifier.size(60.dp),
-                tint = MaterialTheme.colorScheme.tertiary
-            )
-        }
-
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                "How's your experience?",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            Text(
-                "Your feedback helps us make Silent Zone better.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-        }
-        // Message Input
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            DashboardSectionHeader("Message")
-            OutlinedTextField(
-                value = message,
-                onValueChange = { message = it },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 150.dp),
-                placeholder = {
-                    Text(
-                        "Tell us what's on your mind...",
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                    )
-                },
-                shape = RoundedCornerShape(20.dp),
-                colors =
-                    OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.tertiary,
-                        unfocusedBorderColor =
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                        focusedContainerColor =
-                            MaterialTheme.colorScheme.surfaceVariant.copy(
-                                alpha = 0.3f
-                            ),
-                        unfocusedContainerColor =
-                            MaterialTheme.colorScheme.surfaceVariant.copy(
-                                alpha = 0.3f
-                            )
-                    )
-            )
-        }
-
-        // Submit Button
-        Button(
-            onClick = {
-                FeedbackUtils.sendFeedback(context, rating, selectedCategory, message)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(64.dp),
-            shape = RoundedCornerShape(20.dp),
-            colors =
-                ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary,
-                    contentColor = MaterialTheme.colorScheme.onTertiary
-                ),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
-        ) {
-            Text(
-                "Send Feedback",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(Icons.Default.Send, null, modifier = Modifier.size(20.dp))
-        }
-
-        Spacer(modifier = Modifier.height(contentPadding.calculateBottomPadding() + 40.dp))
-    }
 }

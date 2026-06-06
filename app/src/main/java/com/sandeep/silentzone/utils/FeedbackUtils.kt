@@ -6,41 +6,23 @@ import android.net.Uri
 import android.widget.Toast
 
 object FeedbackUtils {
-    private const val DEVELOPER_EMAIL = "support.silentzone@gmail.com"
-
-    fun sendFeedback(
-        context: Context,
-        rating: Int,
-        category: String,
-        message: String
-    ) {
-        val ratingStars = "⭐".repeat(rating)
-        val emailBody = """
-            Feedback from SilentZone User
-            -----------------------------
-            Rating: $ratingStars ($rating/5)
-            Category: $category
-            
-            Message:
-            $message
-            
-            -----------------------------
-            Device Info:
-            OS: Android ${android.os.Build.VERSION.RELEASE} (API ${android.os.Build.VERSION.SDK_INT})
-            Model: ${android.os.Build.MODEL}
-        """.trimIndent()
-
-        val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = Uri.parse("mailto:")
-            putExtra(Intent.EXTRA_EMAIL, arrayOf(DEVELOPER_EMAIL))
-            putExtra(Intent.EXTRA_SUBJECT, "SilentZone App Feedback: $category")
-            putExtra(Intent.EXTRA_TEXT, emailBody)
-        }
-
+    fun rateApp(context: Context) {
+        val packageName = context.packageName
         try {
-            context.startActivity(Intent.createChooser(intent, "Send Feedback via..."))
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$packageName"))
+            )
         } catch (e: Exception) {
-            Toast.makeText(context, "No email client found", Toast.LENGTH_SHORT).show()
+            try {
+                context.startActivity(
+                    Intent(
+                        Intent.ACTION_VIEW,
+                        Uri.parse("https://play.google.com/store/apps/details?id=$packageName")
+                    )
+                )
+            } catch (fallbackError: Exception) {
+                Toast.makeText(context, "Unable to open Play Store", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
